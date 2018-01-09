@@ -1,0 +1,15 @@
+{
+  "name": "tweedentity",
+  "version": "0.0.1",
+  "description": "tweedentity",
+  "devDependencies": {},
+  "dependencies": {
+    "sleep": "^5.1.1"
+  },
+  "scripts": {
+    "testServer": "ganache-cli --mnemonic 'tweedentity'",
+    "bridge": "cd ethereum-bridge && node bridge -H localhost:8545 -a 9 --dev",
+    "test": "truffle test",
+    "clear": "rm -rf build/contracts"
+  }
+}
