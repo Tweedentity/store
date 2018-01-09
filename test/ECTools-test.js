@@ -14,7 +14,7 @@ function logValue(...x) {
 
 contract('ECTools', accounts => {
 
-  // return
+  return
 
   let ectools
   let message

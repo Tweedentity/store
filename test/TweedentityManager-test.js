@@ -20,7 +20,7 @@ function logValue(...x) {
 
 contract('TweedentityManager', accounts => {
 
-  return
+  // return
 
   let manager
   let managerV2
