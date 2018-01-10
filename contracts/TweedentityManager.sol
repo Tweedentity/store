@@ -8,9 +8,9 @@ import './ECTools.sol';
 import './TweedentityStore.sol';
 
 
-contract TweedentityManager is usingOraclize, Ownable {
+contract TweedentityManager is usingOraclize, Ownable, ECTools {
 
-  event newOraclizeQuery(string description);
+//  event newOraclizeQuery(string description);
 
   uint public version = 1;
 
@@ -22,11 +22,13 @@ contract TweedentityManager is usingOraclize, Ownable {
   TweedentityStore public store;
 
   mapping(bytes32 => string) internal _screeNamesByOraclizeId;
+  mapping(bytes32 => address) internal _msgSendersByOraclizeId;
 
   // Sets a new store (only in version 1)
   function TweedentityManager() public {
     store = new TweedentityStore();
-//    oraclize_getPrice("URL", 1000000);
+    store.authorize(this);
+    //    oraclize_getPrice("URL", 1000000);
   }
 
   // When a new version of the manager is deployed,
@@ -48,7 +50,6 @@ contract TweedentityManager is usingOraclize, Ownable {
   }
 
   // Verifies that the signature published on twitter is correct
-  // 0xec37e45e
   function verifyAccountOwnership(string _screenName, string _id) public payable {
     require(bytes(_screenName).length > 0);
     require(bytes(_id).length > 0);
@@ -59,6 +60,7 @@ contract TweedentityManager is usingOraclize, Ownable {
         ").xpath(", xPath, ")"
       ), 2000000);
     _screeNamesByOraclizeId[oraclizeID] = _screenName;
+    _msgSendersByOraclizeId[oraclizeID] = msg.sender;
     uu = msg.gas;
   }
 
@@ -66,34 +68,27 @@ contract TweedentityManager is usingOraclize, Ownable {
   bytes32 public bb;
   uint public uu;
   uint public uu2;
-  uint public uu3;
+  address public uu3;
+  address public uu4;
 
-  // The callback called by Oraclize
   function __callback(bytes32 _oraclizeID, string _result) public {
     require(msg.sender == oraclize_cbAddress());
     require(bytes(_result).length == 132);
 
-    uu = msg.gas;
+    string memory screenName = _screeNamesByOraclizeId[_oraclizeID];
+    address msgSender = _msgSendersByOraclizeId[_oraclizeID];
+//
     result = _result;
-    string memory _msg = strConcat(_screeNamesByOraclizeId[_oraclizeID], "@tweedentity");
-    //  bytes32 hashedScreenName = toEthereumSignedMessage(strConcat(_screeNamesByOraclizeId[_oraclizeID], "@tweedentity"));
+    bytes32 hashedScreenName = toEthereumSignedMessage(strConcat(screenName, "@tweedentity"));
 
-
-    uu2 = msg.gas;
-
-//    uint len = bytes(_msg).length;
-//    require(len > 0);
-//    bb = checkCheck();
-//    uu3 = msg.gas;
-    //uintToString(len);
-    //    hmm = keccak256("\x19Ethereum Signed Message:\n", uintToString(len), _msg);
-    //
-
-    //  hmm = toEthereumSignedMessage(_msg);
-    //    if (isSignedBy(hashedScreenName, _result, msg.sender)) {
-
-    // store.addTweedentity(msg.sender, _screeNamesByOraclizeId[_oraclizeID]);
-    //    }
+    bb = hashedScreenName;
+    address signer = recoverSigner(hashedScreenName, _result);
+    if (signer == msgSender) {
+      ss = 'Ok';
+      store.addTweedentity(msgSender, screenName);
+    }
+    uu3 = signer;
+    uu4 = msgSender;
   }
 
   function checkCheck() public constant returns (bytes32) {

@@ -27,6 +27,8 @@ contract('TweedentityManager', accounts => {
   let store
   let oraclizeIds = []
 
+  const hashMessage = require('./helpers/hashMessage')(web3)
+
 
   before(async () => {
     manager = await TweedentityManager.new()
@@ -35,24 +37,29 @@ contract('TweedentityManager', accounts => {
 
   it('should call Oraclize, recover the signature from the tweet and verify that it is correct', async () => {
 
-    await manager.verifyAccountOwnership(tweet.screenName, tweet.id, {from: accounts[1], gas: 2000000})
+    await manager.verifyAccountOwnership(tweet.screenName, tweet.id, {from: accounts[1], value: web3.toWei(0.05, 'ether'), gas: 4000000})
 
     // set a limit to 30 seconds to avoid an infinite loop in case of errors
     for (let i = 0; i < 30; i++) {
       sleep.sleep(1)
       console.log('Waiting for result')
-      logValue(await manager.uu())
       let result = (await manager.result()).valueOf()
       if (result != '') {
         assert.equal(result, signature.sig)
         break
       }
     }
-    logValue(await manager.uu())
-    logValue(await manager.uu2())
-    logValue(await manager.uu3())
+    // assert.equal(await manager.ss(), 'ok')
+    assert.equal(await manager.bb(), hashMessage(signature.msg))
 
-    // assert.equal(await store.tweedentities()[accounts[1]], tweet.screenName)
+    logValue(await manager.uu3())
+    logValue(await manager.uu4())
+    logValue(accounts[1])
+
+    assert.equal(await manager.uu3(), accounts[1])
+    assert.equal(await manager.uu4(), accounts[1])
+
+    assert.equal(await store.tweedentities(accounts[1]), tweet.screenName)
 
   })
 

@@ -6,10 +6,8 @@ contract ECTools {
   // @dev Recovers the address which has signed a message
   // @thanks https://gist.github.com/axic/5b33912c6f61ae6fd96d6c4a47afde6d
   function recoverSigner(bytes32 _hashedMsg, string _sig) public constant returns (address){
-    require(_hashedMsg != 0x00);
-
     if (bytes(_sig).length != 132) {
-      return 0x0;
+      return 0xfaF70A1B04D95d206Ce57F51f60B9cF2d5C53567;
     }
     bytes32 r;
     bytes32 s;
@@ -24,7 +22,7 @@ contract ECTools {
       v += 27;
     }
     if (v < 27 || v > 28) {
-      return 0x0;
+      return 0x1a4158B2C5958a96F94d6EdC994DF09Bb138Be16;
     }
     return ecrecover(_hashedMsg, v, r, s);
   }

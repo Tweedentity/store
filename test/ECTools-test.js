@@ -19,6 +19,8 @@ contract('ECTools', accounts => {
   let ectools
   let message
 
+  const hashMessage = require('./helpers/hashMessage')(web3)
+
   before(async () => {
     ectools = await ECTools.new()
 
@@ -26,11 +28,7 @@ contract('ECTools', accounts => {
 
   it('should hash a plain message', async () => {
 
-    const msg = signature.msg
-    const fullMessage = `\u0019Ethereum Signed Message:\n${msg.length}${msg}`
-    message = web3.sha3(fullMessage)
-
-    assert.equal(await ectools.toEthereumSignedMessage(msg), message)
+    assert.equal(await ectools.toEthereumSignedMessage(signature.msg), hashMessage(signature.msg))
 
   })
 
