@@ -14,8 +14,6 @@ function logValue(...x) {
 
 contract('ECTools', accounts => {
 
-  return
-
   let ectools
   let message
 
@@ -23,12 +21,18 @@ contract('ECTools', accounts => {
 
   before(async () => {
     ectools = await ECTools.new()
-
+    message = hashMessage(signature.msg)
   })
 
   it('should hash a plain message', async () => {
 
-    assert.equal(await ectools.toEthereumSignedMessage(signature.msg), hashMessage(signature.msg))
+    assert.equal(await ectools.toEthereumSignedMessage(signature.msg), message)
+
+  })
+
+  it('should recover the address which signed a message', async () => {
+
+    assert.equal(await ectools.recoverSigner(message, signature.sig), signature.address)
 
   })
 
@@ -46,8 +50,6 @@ contract('ECTools', accounts => {
   it('should return a substring', async () => {
     assert.equal(await ectools.substring('example', 2, 4), 'am')
   })
-
-
 
   it('should convert an hexstring to bytes', async () => {
 

@@ -6,8 +6,6 @@ const Authorizable = artifacts.require('./mocks/AuthorizableMock.sol')
 
 contract('Authorizable', accounts => {
 
-  return
-
   let authorizable
   let authorizedLevel1 = accounts[1]
   let authorizedLevel5 = accounts[2]
@@ -22,7 +20,7 @@ contract('Authorizable', accounts => {
   })
 
   it('should authorize authorizedLevel1', async () => {
-    await authorizable.authorize(authorizedLevel1)
+    await authorizable.authorize(authorizedLevel1, 1)
     let level = await authorizable.authorized(authorizedLevel1)
     assert.isTrue(level == 1)
     let _authorized = await authorizable.getAuthorizedAddresses()
@@ -30,7 +28,7 @@ contract('Authorizable', accounts => {
   })
 
   it('should authorize authorizedLevel5', async () => {
-    await authorizable.authorizeLevel(authorizedLevel5, 5)
+    await authorizable.authorize(authorizedLevel5, 5)
     let level = await authorizable.authorized(authorizedLevel5)
     assert.isTrue(level == 5)
     let _authorized = await authorizable.getAuthorizedAddresses()

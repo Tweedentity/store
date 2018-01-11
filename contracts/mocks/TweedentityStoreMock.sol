@@ -10,7 +10,7 @@ contract TweedentityStoreMock is TweedentityStore {
 
     minimumTimeRequiredBeforeUpdate = _newMinimumTime;
 
-    MinimumTimeRequiredBeforeUpdateChanged(_newMinimumTime);
+    minimumTimeRequiredBeforeUpdateChanged(_newMinimumTime);
   }
 
 }

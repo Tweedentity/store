@@ -2,10 +2,10 @@ pragma solidity ^0.4.18;
 
 import 'zeppelin/math/SafeMath.sol';
 
-import './AuthorizableLite.sol';
+import './Authorizable.sol';
 
 
-contract TweedentityStore is AuthorizableLite {
+contract TweedentityStore is Authorizable {
   using SafeMath for uint;
 
   mapping(address => string) public tweedentities;
@@ -20,9 +20,9 @@ contract TweedentityStore is AuthorizableLite {
 
   mapping(string => ScreenName) internal _screenNames;
 
-  event MinimumTimeRequiredBeforeUpdateChanged(uint _time);
-  event TweedentityAdded(address _address, string _screenName);
-  event TweedentityRemoved(address _address, string _screenName);
+  event minimumTimeRequiredBeforeUpdateChanged(uint _time);
+  event tweedentityAdded(address _address, string _screenName);
+  event tweedentityRemoved(address _address, string _screenName);
 
   // Adds a new tweedentity
   function addTweedentity(address _address, string _screenName) onlyAuthorized public {
@@ -33,7 +33,7 @@ contract TweedentityStore is AuthorizableLite {
     tweedentities[_address] = _screenName;
     _screenNames[toLower(_screenName)] = ScreenName(now, _address);
 
-    TweedentityAdded(_address, _screenName);
+    tweedentityAdded(_address, _screenName);
     totalTweedentities = totalTweedentities.add(1);
   }
 
@@ -55,7 +55,7 @@ contract TweedentityStore is AuthorizableLite {
     require(now >= _screenNames[toLower(tweedentities[_address])].lastUpdate + minimumTimeRequiredBeforeUpdate);
 
     _screenNames[toLower(tweedentities[_address])] = ScreenName(now, 0x0);
-    TweedentityRemoved(_address, tweedentities[_address]);
+    tweedentityRemoved(_address, tweedentities[_address]);
     delete tweedentities[_address];
     totalTweedentities = totalTweedentities.sub(1);
   }
@@ -66,7 +66,7 @@ contract TweedentityStore is AuthorizableLite {
     require(_newMinimumTime >= 1 hours && _newMinimumTime <= 1 weeks);
 
     minimumTimeRequiredBeforeUpdate = _newMinimumTime;
-    MinimumTimeRequiredBeforeUpdateChanged(_newMinimumTime);
+    minimumTimeRequiredBeforeUpdateChanged(_newMinimumTime);
   }
 
   // Returns last address associated with a Twitter.
@@ -80,14 +80,13 @@ contract TweedentityStore is AuthorizableLite {
     }
   }
 
-
   // Converts a string to the lower case
   // @thanks https://gist.github.com/thomasmaclean/276cb6e824e48b7ca4372b194ec05b97
   function toLower(string str) public constant returns (string) {
     bytes memory bStr = bytes(str);
     bytes memory bLower = new bytes(bStr.length);
     for (uint i = 0; i < bStr.length; i++) {
-      if ((bStr[i] >= 65) && (bStr[i] <= 90)) {
+      if (bStr[i] >= 65 && bStr[i] <= 90) {
         bLower[i] = bytes1(int(bStr[i]) + 32);
       } else {
         bLower[i] = bStr[i];

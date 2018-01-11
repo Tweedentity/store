@@ -10,7 +10,8 @@ import './TweedentityStore.sol';
 
 contract TweedentityManager is usingOraclize, Ownable, ECTools {
 
-//  event newOraclizeQuery(string description);
+  event newOraclizeQuery(bytes32 oraclizeID, string description);
+  event ownershipConfirmation(bytes32 oraclizeID, address addr, string screenName, bool success);
 
   uint public version = 1;
 
@@ -21,23 +22,28 @@ contract TweedentityManager is usingOraclize, Ownable, ECTools {
 
   TweedentityStore public store;
 
-  mapping(bytes32 => string) internal _screeNamesByOraclizeId;
-  mapping(bytes32 => address) internal _msgSendersByOraclizeId;
+  struct TempData {
+    string screenName;
+    address sender;
+  }
 
-  // Sets a new store (only in version 1)
+  mapping(bytes32 => TempData) internal _tempData;
+
+  // Sets a new store (only version 1)
   function TweedentityManager() public {
     store = new TweedentityStore();
-    store.authorize(this);
-    //    oraclize_getPrice("URL", 1000000);
+    store.authorize(this, 9);
   }
 
   // When a new version of the manager is deployed,
   // it allows the new version to manage the existent store.
   function changeStoreOwnership(address _newOwner) onlyOwner public {
+    store.authorize(_newOwner, 9);
     store.transferOwnership(_newOwner);
+    store.deAuthorize();
   }
 
-  // Allow to set an existent store instead of a new one.
+  // Sets an existent store instead of a new one (only versions 2+)
   function useExistentStore(address _address) onlyOwner public {
     require(_address != 0x0);
     store = TweedentityStore(_address);
@@ -49,51 +55,58 @@ contract TweedentityManager is usingOraclize, Ownable, ECTools {
     xPath = _xPath;
   }
 
+  uint public cost;
+  uint public cost2;
+
   // Verifies that the signature published on twitter is correct
   function verifyAccountOwnership(string _screenName, string _id) public payable {
     require(bytes(_screenName).length > 0);
     require(bytes(_id).length > 0);
 
+    string memory screenName = toLower(_screenName);
     bytes32 oraclizeID = oraclize_query("URL", strConcat(
         "html(",
-        strConcat("https://twitter.com/", _screenName, "/status/", _id),
+        strConcat("https://twitter.com/", screenName, "/status/", _id),
         ").xpath(", xPath, ")"
       ), 2000000);
-    _screeNamesByOraclizeId[oraclizeID] = _screenName;
-    _msgSendersByOraclizeId[oraclizeID] = msg.sender;
-    uu = msg.gas;
+    cost = oraclize_getPrice("URL", 200000);
+    cost2 = oraclize_getPrice("URL", 2000000);
+    newOraclizeQuery(oraclizeID, 'Asking Oraclize to load the sig from the tweet');
+    _tempData[oraclizeID] = TempData(screenName, msg.sender);
   }
 
-  string public ss;
-  bytes32 public bb;
-  uint public uu;
-  uint public uu2;
-  address public uu3;
-  address public uu4;
 
   function __callback(bytes32 _oraclizeID, string _result) public {
     require(msg.sender == oraclize_cbAddress());
     require(bytes(_result).length == 132);
 
-    string memory screenName = _screeNamesByOraclizeId[_oraclizeID];
-    address msgSender = _msgSendersByOraclizeId[_oraclizeID];
-//
+    string memory screenName = _tempData[_oraclizeID].screenName;
+    address sender = _tempData[_oraclizeID].sender;
+
     result = _result;
     bytes32 hashedScreenName = toEthereumSignedMessage(strConcat(screenName, "@tweedentity"));
-
-    bb = hashedScreenName;
     address signer = recoverSigner(hashedScreenName, _result);
-    if (signer == msgSender) {
-      ss = 'Ok';
-      store.addTweedentity(msgSender, screenName);
+    if (signer == sender) {
+      store.addTweedentity(sender, screenName);
+      ownershipConfirmation(_oraclizeID, sender, screenName, true);
+    } else {
+      ownershipConfirmation(_oraclizeID, sender, screenName, false);
     }
-    uu3 = signer;
-    uu4 = msgSender;
   }
 
-  function checkCheck() public constant returns (bytes32) {
-    return 0x01;
+  // Converts a string to the lower case
+  // @thanks https://gist.github.com/thomasmaclean/276cb6e824e48b7ca4372b194ec05b97
+  function toLower(string str) public constant returns (string) {
+    bytes memory bStr = bytes(str);
+    bytes memory bLower = new bytes(bStr.length);
+    for (uint i = 0; i < bStr.length; i++) {
+      if (bStr[i] >= 65 && bStr[i] <= 90) {
+        bLower[i] = bytes1(int(bStr[i]) + 32);
+      } else {
+        bLower[i] = bStr[i];
+      }
+    }
+    return string(bLower);
   }
-
 
 }

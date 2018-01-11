@@ -3,12 +3,21 @@ pragma solidity ^0.4.18;
 
 contract ECTools {
 
+  // @dev Hashes a message to be verified
+  function toEthereumSignedMessage(string _msg) public constant returns (bytes32) {
+    uint len = bytes(_msg).length;
+    require(len > 0);
+    bytes memory prefix = "\x19Ethereum Signed Message:\n";
+    return keccak256(prefix, uintToString(len), _msg);
+  }
+
   // @dev Recovers the address which has signed a message
   // @thanks https://gist.github.com/axic/5b33912c6f61ae6fd96d6c4a47afde6d
+  // @param _hashedMsg is an hashed prefixed message
+  // @param _sig is a full, 132-chars long sig
   function recoverSigner(bytes32 _hashedMsg, string _sig) public constant returns (address){
-    if (bytes(_sig).length != 132) {
-      return 0xfaF70A1B04D95d206Ce57F51f60B9cF2d5C53567;
-    }
+    require(bytes(_sig).length == 132);
+
     bytes32 r;
     bytes32 s;
     uint8 v;
@@ -22,14 +31,13 @@ contract ECTools {
       v += 27;
     }
     if (v < 27 || v > 28) {
-      return 0x1a4158B2C5958a96F94d6EdC994DF09Bb138Be16;
+      return address(0);
     }
     return ecrecover(_hashedMsg, v, r, s);
   }
 
   // @dev Verifies if the message is signed by an address
   function isSignedBy(bytes32 _hashedMsg, string _sig, address _addr) public constant returns (bool){
-    require(_addr != 0x0);
 
     return _addr == recoverSigner(_hashedMsg, _sig);
   }
@@ -72,14 +80,6 @@ contract ECTools {
   function uintToBytes32(uint _uint) public constant returns (bytes b) {
     b = new bytes(32);
     assembly {mstore(add(b, 32), _uint)}
-  }
-
-  // @dev Hashes the signed message
-  function toEthereumSignedMessage(string _msg) public constant returns (bytes32) {
-    uint len = bytes(_msg).length;
-    require(len > 0);
-    bytes memory prefix = "\x19Ethereum Signed Message:\n";
-    return keccak256(prefix, uintToString(len), _msg);
   }
 
   // @dev Converts a uint in a string

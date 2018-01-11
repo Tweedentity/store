@@ -4,6 +4,7 @@
   "description": "tweedentity",
   "devDependencies": {},
   "dependencies": {
+    "lodash": "^4.17.4",
     "sleep": "^5.1.1"
   },
   "scripts": {

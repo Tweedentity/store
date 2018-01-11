@@ -6,8 +6,6 @@ const TweedentityStore = artifacts.require('./mocks/TweedentityStoreMock.sol')
 
 contract('TweedentityStore', accounts => {
 
-  return
-
   let store
 
   before(async () => {
@@ -81,5 +79,8 @@ contract('TweedentityStore', accounts => {
     assert.isTrue(await store.tweedentities(accounts[3]) == 'George')
   })
 
+  it('shoyld return the loweCase of a string', async () => {
+    assert.equal(await manager.toLower('CASEsensiTiVe'), 'casesensitive')
+  })
 
 })
