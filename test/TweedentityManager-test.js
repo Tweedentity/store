@@ -47,11 +47,7 @@ contract('TweedentityManager', accounts => {
 
     let newOraclizeQuery = await logEvent(manager, {event: 'newOraclizeQuery', logIndex: 1, args: {}})
     let oraclizeID = newOraclizeQuery[0].args.oraclizeID
-
-    console.log('Cost for 200000:')
-    logValue(await manager.cost())
-    console.log('Cost for 2000000:')
-    logValue(await manager.cost2())
+    console.log('oraclizeID', oraclizeID)
 
     let ownershipConfirmation
     for (let i = 0; i < 30; i++) {
@@ -66,7 +62,7 @@ contract('TweedentityManager', accounts => {
     assert.isTrue(ownershipConfirmation[0].args.success)
     assert.equal(await store.tweedentities(accounts[1]), tweet.screenName)
 
-    logValue(await manager.remainingGas())
+    // logValue(await manager.remainingGas())
 
   })
 

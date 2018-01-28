@@ -4,11 +4,10 @@ pragma solidity ^0.4.18;
 import 'oraclize/usingOraclize.sol';
 import 'zeppelin/ownership/Ownable.sol';
 
-import './ECTools.sol';
 import './TweedentityStore.sol';
 
 
-contract TweedentityManager is usingOraclize, Ownable, ECTools {
+contract TweedentityManager is usingOraclize, Ownable {
 
   event newOraclizeQuery(bytes32 oraclizeID, string description);
   event ownershipConfirmation(bytes32 oraclizeID, address addr, string screenName, bool success);
@@ -55,24 +54,17 @@ contract TweedentityManager is usingOraclize, Ownable, ECTools {
     xPath = _xPath;
   }
 
-  uint public cost;
-  uint public cost2;
-
   // Verifies that the signature published on twitter is correct
   function verifyAccountOwnership(string _screenName, string _id) public payable {
     require(bytes(_screenName).length > 0);
     require(bytes(_id).length > 0);
 
-    string memory screenName = toLower(_screenName);
     bytes32 oraclizeID = oraclize_query("URL", strConcat(
-        "html(",
-        strConcat("https://twitter.com/", screenName, "/status/", _id),
-        ").xpath(", xPath, ")"
-      ), 2000000);
-    cost = oraclize_getPrice("URL", 200000);
-    cost2 = oraclize_getPrice("URL", 2000000);
+        "https://api.tweedentity.com/",
+        strConcat(_screenName, "/", _id, "/", toString(msg.sender))
+      ));
     newOraclizeQuery(oraclizeID, 'Asking Oraclize to load the sig from the tweet');
-    _tempData[oraclizeID] = TempData(screenName, msg.sender);
+    _tempData[oraclizeID] = TempData(_screenName, msg.sender);
   }
 
 
@@ -83,10 +75,7 @@ contract TweedentityManager is usingOraclize, Ownable, ECTools {
     string memory screenName = _tempData[_oraclizeID].screenName;
     address sender = _tempData[_oraclizeID].sender;
 
-    result = _result;
-    bytes32 hashedScreenName = toEthereumSignedMessage(strConcat(screenName, "@tweedentity"));
-    address signer = recoverSigner(hashedScreenName, _result);
-    if (signer == sender) {
+    if (keccak256(_result) == keccak256('true')) {
       store.addTweedentity(sender, screenName);
       ownershipConfirmation(_oraclizeID, sender, screenName, true);
     } else {
@@ -94,19 +83,11 @@ contract TweedentityManager is usingOraclize, Ownable, ECTools {
     }
   }
 
-  // Converts a string to the lower case
-  // @thanks https://gist.github.com/thomasmaclean/276cb6e824e48b7ca4372b194ec05b97
-  function toLower(string str) public constant returns (string) {
-    bytes memory bStr = bytes(str);
-    bytes memory bLower = new bytes(bStr.length);
-    for (uint i = 0; i < bStr.length; i++) {
-      if (bStr[i] >= 65 && bStr[i] <= 90) {
-        bLower[i] = bytes1(int(bStr[i]) + 32);
-      } else {
-        bLower[i] = bStr[i];
-      }
-    }
-    return string(bLower);
+  function toString(address x) returns (string) {
+    bytes memory b = new bytes(20);
+    for (uint i = 0; i < 20; i++)
+      b[i] = byte(uint8(uint(x) / (2**(8*(19 - i)))));
+    return string(b);
   }
 
 }
