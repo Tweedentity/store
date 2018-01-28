@@ -4,13 +4,24 @@ import '../TweedentityManager.sol';
 
 contract TweedentityManagerMock is TweedentityManager {
 
-//  function TweedentityManagerMock() public {
-//    OAR = OraclizeAddrResolverI(0x337b59F0985D3b712350d6c36271E68d28580960);
+  string public result;
+  string public url;
+  bytes32 public oraclizeID;
+
+  event log(string s);
+
+  uint public remainingGas;
+
+//  function verifyAccountOwnership(string _screenName, string _id, uint _gasPrice) public payable {
+//    super.verifyAccountOwnership(_screenName, _id, _gasPrice);
+//
+////    remainingGas = msg.gas;
 //  }
 
 //  function __callback(bytes32 _oraclizeID, string _result) public {
-//    require(msg.sender == oraclize_cbAddress());
-//    result = _result;
+//    super.__callback(_oraclizeID, _result);
+//    remainingGas = msg.gas;
 //  }
+
 
 }

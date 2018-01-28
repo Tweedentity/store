@@ -9,8 +9,7 @@ import './TweedentityStore.sol';
 
 contract TweedentityManager is usingOraclize, Ownable {
 
-  event newOraclizeQuery(bytes32 oraclizeID, string description);
-  event ownershipConfirmation(bytes32 oraclizeID, address addr, string screenName, bool success);
+  event ownershipConfirmation(address addr, string screenName, bool success);
 
   uint public version = 1;
 
@@ -55,39 +54,49 @@ contract TweedentityManager is usingOraclize, Ownable {
   }
 
   // Verifies that the signature published on twitter is correct
-  function verifyAccountOwnership(string _screenName, string _id) public payable {
+  function verifyAccountOwnership(string _screenName, string _id, uint _gasPrice) public payable {
     require(bytes(_screenName).length > 0);
     require(bytes(_id).length > 0);
 
+    oraclize_setCustomGasPrice(_gasPrice);
+
     bytes32 oraclizeID = oraclize_query("URL", strConcat(
-        "https://api.tweedentity.com/",
-        strConcat(_screenName, "/", _id, "/", toString(msg.sender))
-      ));
-    newOraclizeQuery(oraclizeID, 'Asking Oraclize to load the sig from the tweet');
+        "json(https://api.tweedentity.com/",
+        strConcat(_screenName, "/", _id, "/0x", addressToString(msg.sender)),
+        ").success"
+      ), 160000);
     _tempData[oraclizeID] = TempData(_screenName, msg.sender);
   }
 
-
   function __callback(bytes32 _oraclizeID, string _result) public {
     require(msg.sender == oraclize_cbAddress());
-    require(bytes(_result).length == 132);
 
     string memory screenName = _tempData[_oraclizeID].screenName;
     address sender = _tempData[_oraclizeID].sender;
 
     if (keccak256(_result) == keccak256('true')) {
       store.addTweedentity(sender, screenName);
-      ownershipConfirmation(_oraclizeID, sender, screenName, true);
+      ownershipConfirmation(sender, screenName, true);
     } else {
-      ownershipConfirmation(_oraclizeID, sender, screenName, false);
+      ownershipConfirmation(sender, screenName, false);
     }
   }
 
-  function toString(address x) returns (string) {
-    bytes memory b = new bytes(20);
-    for (uint i = 0; i < 20; i++)
-      b[i] = byte(uint8(uint(x) / (2**(8*(19 - i)))));
-    return string(b);
+  function addressToString(address x) public pure returns (string) {
+    bytes memory s = new bytes(40);
+    for (uint i = 0; i < 20; i++) {
+      byte b = byte(uint8(uint(x) / (2**(8*(19 - i)))));
+      byte hi = byte(uint8(b) / 16);
+      byte lo = byte(uint8(b) - 16 * uint8(hi));
+      s[2*i] = char(hi);
+      s[2*i+1] = char(lo);
+    }
+    return string(s);
+  }
+
+  function char(byte b) internal pure returns (byte c) {
+    if (b < 10) return byte(uint8(b) + 0x30);
+    else return byte(uint8(b) + 0x57);
   }
 
 }

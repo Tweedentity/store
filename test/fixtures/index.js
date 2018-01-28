@@ -1,12 +1,17 @@
 module.exports = {
   tweets: [{
-    id: '957446741460115456',
+    id: '950479222723653632',
     screenName: 'startupnewsit',
+    // The address is accounts[1] running:
+    //     ganache-cli --mnemonic 'tweedentity'
     signature: {
-      "address": "0x8cefe6faeff2ada26d8b5ad332e24b8571eccc7a",
+      "address": "0x185f86b29bce5b40e54600959c710f1314fa5f45",
       "msg": "startupnewsit@tweedentity",
-      "sig": "0xc1955c40b5351f20c491067586d8616dccc9fab918b8ce8e27bd4b75448f00345f5657fa37c0458bd3acdbee215cb38ecadf2b61ecf1a0519292e73af90059321b",
+      "sig": "0x1c67c47ba1587c950c36268b25e7fbda992408d17b4a50e11e00d6c683af06df032d72e8adb46a9599d056bd97b50203f9cf4c3ba498208acc30da1697170d0b1c",
       "version": "2"
     }
+  },{
+    id: '952375450726100993',
+    screenName: 'xWHYed_SWi_1997'
   }]
 }
