@@ -11,9 +11,10 @@ coverage
 .scratch
 .idea
 *.swp
-/tmp
-/log
+tmp
+log
 *.lock
 .node-*
 installed_contracts
+package-lock.json
 *.env
