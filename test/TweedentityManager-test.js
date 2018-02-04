@@ -33,14 +33,36 @@ contract('TweedentityManager', accounts => {
 
 
   before(async () => {
+    store = await TweedentityStore.new() //at(await manager.store())
     manager = await TweedentityManager.new()
     manager2 = await TweedentityManagerV2.new()
-    store = TweedentityStore.at(await manager.store())
   })
 
-  it('should return a string passing an address', async () => {
-    let result = await manager.addressToString(accounts[0])
-    assert.equal(result, accounts[0].substring(2))
+  it('should authorize the manager to handle the store', async () => {
+    await store.authorize(manager.address, 1)
+    assert.isTrue(await store.authorized(manager.address) == 1)
+  })
+
+  it('should revert trying to verify an account before setting the store', async () => {
+
+    const gasPrice = 1e9
+
+    await assertRevert(
+    manager.verifyAccountOwnership(
+    tweet.screenName,
+    tweet.id,
+    gasPrice,
+    {
+      from: accounts[1],
+      value: gasPrice * 160000,
+      gas: 300000
+    }))
+
+  })
+
+  it('should set the store in the manager', async () => {
+    await manager.setStore(store.address)
+    assert.isTrue(await manager.storeSet())
   })
 
   it('should revert if the screenName is empty', async () => {

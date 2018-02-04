@@ -1,40 +1,39 @@
 pragma solidity ^0.4.18;
 
 import 'zeppelin/math/SafeMath.sol';
+import 'zeppelin/ownership/Ownable.sol';
 
 import './Authorizable.sol';
-
+import './TweedentityData.sol';
 
 contract TweedentityStore is Authorizable {
   using SafeMath for uint;
 
-  mapping(address => string) public tweedentities;
-  uint public totalTweedentities = 0;
+  TweedentityData public data;
+
+  bool public isTweedentityStore = true;
+  uint public version = 1;
 
   uint public minimumTimeRequiredBeforeUpdate = 1 days;
 
-  struct ScreenName {
-    uint lastUpdate;
-    address lastAddress;
+  function setData(address _address) public onlyOwner {
+    data = TweedentityData(_address);
+    require(data.isTweedentityData());
   }
 
-  mapping(string => ScreenName) internal _screenNames;
-
-  event minimumTimeRequiredBeforeUpdateChanged(uint _time);
-  event tweedentityAdded(address _address, string _screenName);
-  event tweedentityRemoved(address _address, string _screenName);
-
   // Adds a new tweedentity
-  function addTweedentity(address _address, string _screenName) onlyAuthorized public {
+  function addTweedentity(address _address, string _screenName, string _uid) onlyAuthorized public {
     require(_address != 0x0);
     require(bytes(_screenName).length > 0);
-    require(_screenNames[toLower(_screenName)].lastAddress == 0x0);
+    _screenName = toLower(_screenName);
 
-    tweedentities[_address] = _screenName;
-    _screenNames[toLower(_screenName)] = ScreenName(now, _address);
+    require(data.getAddressByUid(_uid) == address(0));
+//    ||
+//      // this version does not allow to change the screenName associated with a user-id
+//      (data.isUpgradable(_uid) && keccak256(_screenName) == data.getScreenNameHashByUid(_uid))
+//    );
 
-    tweedentityAdded(_address, _screenName);
-    totalTweedentities = totalTweedentities.add(1);
+    data.addTweedentity(_address, _screenName, _uid);
   }
 
   // Remove an existent tweedentity.
@@ -51,34 +50,27 @@ contract TweedentityStore is Authorizable {
   // This is allowed only if a certain time is passed since last update.
   function _removeTweedentity(address _address) internal {
     require(_address != 0x0);
-    require(bytes(tweedentities[_address]).length > 0);
-    require(now >= _screenNames[toLower(tweedentities[_address])].lastUpdate + minimumTimeRequiredBeforeUpdate);
+    require(data.isSet(_address));
 
-    _screenNames[toLower(tweedentities[_address])] = ScreenName(now, 0x0);
-    tweedentityRemoved(_address, tweedentities[_address]);
-    delete tweedentities[_address];
-    totalTweedentities = totalTweedentities.sub(1);
+    data.removeTweedentity(_address);
   }
 
   // Changes the minimum time required before being allowed to remove
   // a tweedentity and associate a screenName to a new address
   function changeMinimumTimeRequiredBeforeUpdate(uint _newMinimumTime) onlyAuthorized public {
     require(_newMinimumTime >= 1 hours && _newMinimumTime <= 1 weeks);
-
-    minimumTimeRequiredBeforeUpdate = _newMinimumTime;
-    minimumTimeRequiredBeforeUpdateChanged(_newMinimumTime);
+    data.changeMinimumTimeRequiredBeforeUpdate(_newMinimumTime);
   }
 
-  // Returns last address associated with a Twitter.
-  // It is payable, to avoid spam.
-  function getAddressByScreenName(string _screenName) public constant returns (address) {
-    require(bytes(_screenName).length > 0);
-    if (_screenNames[toLower(_screenName)].lastUpdate > 0) {
-      return _screenNames[toLower(_screenName)].lastAddress;
-    } else {
-      return address(0);
-    }
-  }
+  //  function getAddressByScreenName(string _screenName) public constant returns (address) {
+  //    require(bytes(_screenName).length > 0 && bytes(_screenName).length <= 15);
+  //    _screenName = toLower(_screenName);
+  //    if (_screenNames[_screenName].lastUpdate > 0) {
+  //      return _screenNames[_screenName].lastAddress;
+  //    } else {
+  //      return address(0);
+  //    }
+  //  }
 
   // Converts a string to the lower case
   // @thanks https://gist.github.com/thomasmaclean/276cb6e824e48b7ca4372b194ec05b97

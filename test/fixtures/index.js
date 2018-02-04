@@ -2,6 +2,7 @@ module.exports = {
   tweets: [{
     id: '950479222723653632',
     screenName: 'startupnewsit',
+    userId: '137042753',
     // The address is accounts[1] running:
     //     ganache-cli --mnemonic 'tweedentity'
     signature: {

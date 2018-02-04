@@ -14,11 +14,9 @@ contract TweedentityManager is usingOraclize, Ownable {
   uint public version = 1;
 
   string public result;
-  //  bytes32 public oraclizeID;
-
-  string internal xPath = "//p[contains(@class,'tweet-text')]/text()";
 
   TweedentityStore public store;
+  bool public storeSet;
 
   struct TempData {
     string screenName;
@@ -27,43 +25,28 @@ contract TweedentityManager is usingOraclize, Ownable {
 
   mapping(bytes32 => TempData) internal _tempData;
 
-  // Sets a new store (only version 1)
-  function TweedentityManager() public {
-    store = new TweedentityStore();
-    store.authorize(this, 9);
+  modifier isStoreSet() {
+    require(storeSet);
+    _;
   }
 
-  // When a new version of the manager is deployed,
-  // it allows the new version to manage the existent store.
-  function changeStoreOwnership(address _newOwner) onlyOwner public {
-    store.authorize(_newOwner, 9);
-    store.transferOwnership(_newOwner);
-    store.deAuthorize();
-  }
-
-  // Sets an existent store instead of a new one (only versions 2+)
-  function useExistentStore(address _address) onlyOwner public {
+  function setStore(address _address) onlyOwner public {
     require(_address != 0x0);
     store = TweedentityStore(_address);
-  }
-
-  // Updates xPath in case Twitter changes something
-  function updateXpath(string _xPath) public onlyOwner {
-    require(bytes(_xPath).length > 0);
-    xPath = _xPath;
+    require(store.authorized(address(this)) > 0);
+    storeSet = true;
   }
 
   // Verifies that the signature published on twitter is correct
-  function verifyAccountOwnership(string _screenName, string _id, uint _gasPrice) public payable {
-    require(bytes(_screenName).length > 0);
-    require(bytes(_id).length > 0);
+  function verifyAccountOwnership(string _screenName, string _id, uint _gasPrice) public isStoreSet payable {
+    require(bytes(_screenName).length > 0 && bytes(_screenName).length <= 15);
+    require(bytes(_id).length >= 18);
 
     oraclize_setCustomGasPrice(_gasPrice);
 
     bytes32 oraclizeID = oraclize_query("URL", strConcat(
-        "json(https://api.tweedentity.com/",
-        strConcat(_screenName, "/", _id, "/0x", addressToString(msg.sender)),
-        ").success"
+        "https://api.tweedentity.com/",
+        strConcat(_screenName, "/", _id, "/0x", addressToString(msg.sender))
       ), 160000);
     _tempData[oraclizeID] = TempData(_screenName, msg.sender);
   }
@@ -74,22 +57,22 @@ contract TweedentityManager is usingOraclize, Ownable {
     string memory screenName = _tempData[_oraclizeID].screenName;
     address sender = _tempData[_oraclizeID].sender;
 
-    if (keccak256(_result) == keccak256('true')) {
-      store.addTweedentity(sender, screenName);
+    if (isUid(_result)) {
+      store.addTweedentity(sender, screenName, _result);
       ownershipConfirmation(sender, screenName, true);
     } else {
       ownershipConfirmation(sender, screenName, false);
     }
   }
 
-  function addressToString(address x) public pure returns (string) {
+  function addressToString(address x) internal pure returns (string) {
     bytes memory s = new bytes(40);
     for (uint i = 0; i < 20; i++) {
-      byte b = byte(uint8(uint(x) / (2**(8*(19 - i)))));
+      byte b = byte(uint8(uint(x) / (2 ** (8 * (19 - i)))));
       byte hi = byte(uint8(b) / 16);
       byte lo = byte(uint8(b) - 16 * uint8(hi));
-      s[2*i] = char(hi);
-      s[2*i+1] = char(lo);
+      s[2 * i] = char(hi);
+      s[2 * i + 1] = char(lo);
     }
     return string(s);
   }
@@ -97,6 +80,16 @@ contract TweedentityManager is usingOraclize, Ownable {
   function char(byte b) internal pure returns (byte c) {
     if (b < 10) return byte(uint8(b) + 0x30);
     else return byte(uint8(b) + 0x57);
+  }
+
+  function isUid(string _uid) internal pure returns (bool) {
+    bytes memory uid = bytes(_uid);
+    for (uint i = 0; i < uid.length; i++) {
+      if (uid[i] < 48 || uid[i] > 57) {
+        return false;
+      }
+    }
+    return true;
   }
 
 }

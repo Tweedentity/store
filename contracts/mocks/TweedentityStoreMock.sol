@@ -7,10 +7,7 @@ contract TweedentityStoreMock is TweedentityStore {
 
   function changeMinimumTimeRequiredBeforeUpdate(uint _newMinimumTime) onlyAuthorized public {
     require(_newMinimumTime >= 0 && _newMinimumTime <= 1 weeks);
-
-    minimumTimeRequiredBeforeUpdate = _newMinimumTime;
-
-    minimumTimeRequiredBeforeUpdateChanged(_newMinimumTime);
+    data.changeMinimumTimeRequiredBeforeUpdate(_newMinimumTime);
   }
 
 }
