@@ -25,26 +25,36 @@ contract TweedentityData is Authorizable {
   mapping(string => string) internal uidByScreenName;
   mapping(string => Uid) internal dataByUid;
 
-  event tweedentityAdded(address _address, string _screenName);
-  event tweedentityRemoved(address _address, string _screenName);
+  event tweedentityAdded(address _address, string _screenName, string _uid);
+  event tweedentityRemoved(address _address, string _screenName, string _uid);
   event minimumTimeRequiredBeforeUpdateChanged(uint _time);
 
-  function addTweedentity(address _address, string _screenName, string _uid) public onlyAuthorized {
-    require(!isSet(_uid) || isUpgradable(_uid));
+  modifier canUpgrade(string _uid) {
+    require(isUpgradable(_uid));
+    _;
+  }
+
+  modifier canRemove(address _address) {
+    require(isSet(_address));
+    _;
+  }
+
+  function addTweedentity(address _address, string _screenName, string _uid) public onlyAuthorized canUpgrade(_uid) {
 
     _screenName = toLower(_screenName);
     screenNameByAddress[_address] = _screenName;
     uidByScreenName[_screenName] = _uid;
     dataByUid[_uid] = Uid(_screenName, now, _address);
     totalTweedentities++;
-    tweedentityAdded(_address, _screenName);
+    tweedentityAdded(_address, _screenName, _uid);
   }
 
-  function removeTweedentity(address _address) public onlyAuthorized {
-    dataByUid[uidByScreenName[screenNameByAddress[_address]]].lastAddress = address(0);
-    totalTweedentities--;
+  function removeTweedentity(address _address) public onlyAuthorized canRemove(_address) {
+    string memory uid = uidByScreenName[screenNameByAddress[_address]];
+    dataByUid[uid] = Uid('', dataByUid[uid].lastUpdate, address(0));
     delete screenNameByAddress[_address];
-    tweedentityRemoved(_address, screenNameByAddress[_address]);
+    totalTweedentities--;
+    tweedentityRemoved(_address, screenNameByAddress[_address], uid);
   }
 
   // Changes the minimum time required before being allowed to update
@@ -56,7 +66,9 @@ contract TweedentityData is Authorizable {
 
   // helpers
 
-  function isSet(string _uid) public constant returns (bool){
+  // callable by other contracts
+
+  function isSetU(string _uid) public constant returns (bool){
     return dataByUid[_uid].lastAddress != address(0);
   }
 
@@ -65,7 +77,7 @@ contract TweedentityData is Authorizable {
   }
 
   function isUpgradable(string _uid) public constant returns (bool) {
-    return now >= dataByUid[_uid].lastUpdate + minimumTimeRequiredBeforeUpdate;
+    return isSetU(_uid) == false || now >= dataByUid[_uid].lastUpdate + minimumTimeRequiredBeforeUpdate;
   }
 
   function getScreenNameHashByUid(string _uid) public constant returns (bytes32){
@@ -73,6 +85,7 @@ contract TweedentityData is Authorizable {
   }
 
   function getUidHashByScreenName(string _screenName) public constant returns (bytes32){
+    _screenName = toLower(_screenName);
     return keccak256(uidByScreenName[_screenName]);
   }
 
@@ -81,14 +94,18 @@ contract TweedentityData is Authorizable {
   }
 
   function getAddressByScreenName(string _screenName) public constant returns (address){
+    _screenName = toLower(_screenName);
     return dataByUid[uidByScreenName[_screenName]].lastAddress;
   }
+
+  // not callable by other contracts
 
   function getLastUpdateByUid(string _uid) public constant returns(uint) {
     return dataByUid[_uid].lastUpdate;
   }
 
   function getLastUpdateByScreenName(string _screenName) public constant returns(uint) {
+    _screenName = toLower(_screenName);
     return dataByUid[uidByScreenName[_screenName]].lastUpdate;
   }
 
