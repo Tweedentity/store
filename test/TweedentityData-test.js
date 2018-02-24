@@ -58,7 +58,7 @@ contract('TweedentityData', accounts => {
   })
 
   it('should add a new tweedentity (@marcus) for accounts[2]', async () => {
-    await data.addTweedentity(accounts[2], 'marcus', '23456')
+    await data.addTweedentity(accounts[2], 'marcus', '23456')git pull
 
     assert.equal(await data.totalTweedentities(), 1)
     assert.equal(await data.screenNameByAddress(accounts[2]), 'marcus')
