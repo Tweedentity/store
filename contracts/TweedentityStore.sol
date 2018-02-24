@@ -1,10 +1,12 @@
 pragma solidity ^0.4.18;
 
+
 import 'zeppelin/math/SafeMath.sol';
 import 'zeppelin/ownership/Ownable.sol';
 
 import './Authorizable.sol';
 import './TweedentityData.sol';
+
 
 contract TweedentityStore is Authorizable {
   using SafeMath for uint;
@@ -12,6 +14,7 @@ contract TweedentityStore is Authorizable {
   TweedentityData public data;
 
   bool public isTweedentityStore = true;
+
   uint public version = 1;
 
   uint public minimumTimeRequiredBeforeUpdate = 1 days;
@@ -25,13 +28,11 @@ contract TweedentityStore is Authorizable {
   function addTweedentity(address _address, string _screenName, string _uid) onlyAuthorized public {
     require(_address != 0x0);
     require(bytes(_screenName).length > 0);
-    _screenName = toLower(_screenName);
 
-    require(data.getAddressByUid(_uid) == address(0));
-//    ||
-//      // this version does not allow to change the screenName associated with a user-id
-//      (data.isUpgradable(_uid) && keccak256(_screenName) == data.getScreenNameHashByUid(_uid))
-//    );
+    // this version does not allow to change
+    // the screenName associated with a certain userId
+    bytes32 hash = data.getScreenNameHashByUid(_uid);
+    require(hash == keccak256('0') || hash == keccak256(toLower(_screenName)));
 
     data.addTweedentity(_address, _screenName, _uid);
   }
@@ -50,27 +51,9 @@ contract TweedentityStore is Authorizable {
   // This is allowed only if a certain time is passed since last update.
   function _removeTweedentity(address _address) internal {
     require(_address != 0x0);
-    require(data.isSet(_address));
 
     data.removeTweedentity(_address);
   }
-
-  // Changes the minimum time required before being allowed to remove
-  // a tweedentity and associate a screenName to a new address
-  function changeMinimumTimeRequiredBeforeUpdate(uint _newMinimumTime) onlyAuthorized public {
-    require(_newMinimumTime >= 1 hours && _newMinimumTime <= 1 weeks);
-    data.changeMinimumTimeRequiredBeforeUpdate(_newMinimumTime);
-  }
-
-  //  function getAddressByScreenName(string _screenName) public constant returns (address) {
-  //    require(bytes(_screenName).length > 0 && bytes(_screenName).length <= 15);
-  //    _screenName = toLower(_screenName);
-  //    if (_screenNames[_screenName].lastUpdate > 0) {
-  //      return _screenNames[_screenName].lastAddress;
-  //    } else {
-  //      return address(0);
-  //    }
-  //  }
 
   // Converts a string to the lower case
   // @thanks https://gist.github.com/thomasmaclean/276cb6e824e48b7ca4372b194ec05b97
@@ -80,11 +63,13 @@ contract TweedentityStore is Authorizable {
     for (uint i = 0; i < bStr.length; i++) {
       if (bStr[i] >= 65 && bStr[i] <= 90) {
         bLower[i] = bytes1(int(bStr[i]) + 32);
-      } else {
+      }
+      else {
         bLower[i] = bStr[i];
       }
     }
     return string(bLower);
   }
+
 
 }
