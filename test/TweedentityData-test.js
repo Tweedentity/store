@@ -75,7 +75,7 @@ contract('TweedentityData', accounts => {
     assert.equal(await data.getAddressByScreenName('GEorGE'), accounts[1])
   })
 
-  it('should allow account[3] to be associated to @George', async () => {
+  it('should deassociate @george from account[1] and allow account[3] to be associated to @George', async () => {
     assert.isTrue(await data.isSet(accounts[1]))
 
     await data.removeTweedentity(accounts[1])
