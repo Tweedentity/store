@@ -1,8 +1,8 @@
 pragma solidity ^0.4.18;
 
-import '../TweedentityManager.sol';
+import '../Manager.sol';
 
-contract TweedentityManagerMock is TweedentityManager {
+contract ManagerMock is Manager {
 
   string public result;
   string public url;

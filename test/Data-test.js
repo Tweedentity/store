@@ -1,16 +1,16 @@
 const assertRevert = require('./helpers/assertRevert')
 const log = require('./helpers/log')
 
-const TweedentityData = artifacts.require('./mocks/TweedentityDataMock.sol')
+const Data = artifacts.require('./mocks/DataMock.sol')
 
 
-contract('TweedentityData', accounts => {
+contract('Data', accounts => {
 
   let store
   let data
 
   before(async () => {
-    data = await TweedentityData.new()
+    data = await Data.new()
   })
 
   it('should be empty', async () => {
@@ -18,7 +18,7 @@ contract('TweedentityData', accounts => {
   })
 
   it('should revert trying to add a new tweedentity', async () => {
-    await assertRevert(data.addTweedentity(accounts[1], 'George', '12345'))
+    await assertRevert(data.setIdentity(accounts[1], 'George', '12345'))
   })
 
   it('should authorize accounts[0] to handle the data', async () => {
@@ -28,7 +28,7 @@ contract('TweedentityData', accounts => {
 
   it('should add a new tweedentity (@George) for accounts[1]', async () => {
     assert.isFalse(await data.isSetU('12345'))
-    await data.addTweedentity(accounts[1], 'George', '12345')
+    await data.setIdentity(accounts[1], 'George', '12345')
     assert.equal(await data.getAddressByUid('12345'), accounts[1])
     assert.equal(await data.getAddressByScreenName('george'), accounts[1])
     assert.isTrue(await data.isSetU('12345'))
@@ -41,8 +41,8 @@ contract('TweedentityData', accounts => {
     assert.equal(await data.minimumTimeRequiredBeforeUpdate(), 86400)
   })
 
-  it('should revert trying to update the tweedentity (@George) for accounts[1]', async () => {
-    await assertRevert(data.addTweedentity(accounts[3], 'George', '12345'))
+  it('should revert trying to update the tweedentity (@George) using accounts[3]', async () => {
+    await assertRevert(data.setIdentity(accounts[3], 'George', '12345'))
   })
 
   it('should change minimumTimeRequiredBeforeUpdate to zero', async () => {
@@ -51,21 +51,21 @@ contract('TweedentityData', accounts => {
   })
 
   it('should remove accounts[1] identity', async () => {
-    await data.removeTweedentity(accounts[1])
+    await data.removeIdentity(accounts[1])
 
     console.log((await data.totalTweedentities()).valueOf())
     assert.equal(await data.totalTweedentities(), 0)
   })
 
   it('should add a new tweedentity (@marcus) for accounts[2]', async () => {
-    await data.addTweedentity(accounts[2], 'marcus', '23456')
+    await data.setIdentity(accounts[2], 'marcus', '23456')
 
     assert.equal(await data.totalTweedentities(), 1)
     assert.equal(await data.screenNameByAddress(accounts[2]), 'marcus')
   })
 
   it('should add again the tweedentity (@George) for accounts[1]', async () => {
-    await data.addTweedentity(accounts[1], 'George', '12345')
+    await data.setIdentity(accounts[1], 'George', '12345')
 
     assert.equal(await data.totalTweedentities(), 2)
     assert.equal(await data.screenNameByAddress(accounts[1]), 'george')
@@ -75,15 +75,42 @@ contract('TweedentityData', accounts => {
     assert.equal(await data.getAddressByScreenName('GEorGE'), accounts[1])
   })
 
+  it('should return sha3("george") if looking at the hash of "12345"', async () => {
+    let hash = await data.getScreenNameHashByUid('12345')
+    assert.equal(hash, web3.sha3('george'))
+  })
+
+  it('should return sha3("12345") if looking at the hash of george', async () => {
+    let hash = await data.getUidHashByScreenName('george')
+    assert.equal(hash, web3.sha3('12345'))
+  })
+
+  it('should return true (match) if checking "george" and "12345"', async () => {
+    assert.isTrue(await data.isScreenNameAssociatedWithUidOrAbsent('george','12345'))
+    assert.isTrue(await data.isUidAssociatedWithScreenNameOrAbsent('george','12345'))
+  })
+
+  it('should return true (absent) if checking "albert" and "45678"', async () => {
+    assert.isTrue(await data.isScreenNameAssociatedWithUidOrAbsent('albert','45678'))
+  })
+
+  it('should return false (unmatch) if checking "georg3" and "12345"', async () => {
+    assert.isFalse(await data.isScreenNameAssociatedWithUidOrAbsent('georg3','12345'))
+  })
+
+  it('should return false (unmatch) if checking "george" and "23456"', async () => {
+    assert.isFalse(await data.isUidAssociatedWithScreenNameOrAbsent('george','23456'))
+  })
+
   it('should deassociate @george from account[1] and allow account[3] to be associated to @George', async () => {
     assert.isTrue(await data.isSet(accounts[1]))
 
-    await data.removeTweedentity(accounts[1])
+    await data.removeIdentity(accounts[1])
 
     assert.isFalse(await data.isSet(accounts[1]))
     assert.equal(await data.screenNameByAddress(accounts[1]), '')
 
-    await data.addTweedentity(accounts[3], 'George', '12345')
+    await data.setIdentity(accounts[3], 'George', '12345')
 
     assert.equal(await data.screenNameByAddress(accounts[3]), 'george')
   })

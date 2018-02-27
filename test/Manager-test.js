@@ -3,9 +3,9 @@ const logEvent = require('./helpers/logEvent')
 
 const sleep = require('sleep')
 
-const TweedentityStore = artifacts.require('./TweedentityStore.sol')
-const TweedentityManager = artifacts.require('./mocks/TweedentityManagerMock.sol')
-const TweedentityManagerV2 = artifacts.require('./mocks/TweedentityManagerV2Mock.sol')
+const Store = artifacts.require('./Store.sol')
+const Manager = artifacts.require('./mocks/ManagerMock.sol')
+const ManagerV2 = artifacts.require('./mocks/ManagerV2Mock.sol')
 
 const fixtures = require('./fixtures')
 const tweet = fixtures.tweets[0]
@@ -20,7 +20,7 @@ function logValue(...x) {
 }
 
 
-contract('TweedentityManager', accounts => {
+contract('Manager', accounts => {
 
   // return
 
@@ -33,9 +33,9 @@ contract('TweedentityManager', accounts => {
 
 
   before(async () => {
-    store = await TweedentityStore.new() //at(await manager.store())
-    manager = await TweedentityManager.new()
-    manager2 = await TweedentityManagerV2.new()
+    store = await Store.new() //at(await manager.store())
+    manager = await Manager.new()
+    manager2 = await ManagerV2.new()
   })
 
   it('should authorize the manager to handle the store', async () => {

@@ -4,10 +4,10 @@ pragma solidity ^0.4.18;
 import 'oraclize/usingOraclize.sol';
 import 'zeppelin/ownership/Ownable.sol';
 
-import './TweedentityStore.sol';
+import './Store.sol';
 
 
-contract TweedentityManager is usingOraclize, Ownable {
+contract Manager is usingOraclize, Ownable {
 
   event ownershipConfirmation(address addr, string screenName, bool success);
 
@@ -15,7 +15,7 @@ contract TweedentityManager is usingOraclize, Ownable {
 
   string public result;
 
-  TweedentityStore public store;
+  Store public store;
   bool public storeSet;
 
   struct TempData {
@@ -32,7 +32,7 @@ contract TweedentityManager is usingOraclize, Ownable {
 
   function setStore(address _address) onlyOwner public {
     require(_address != 0x0);
-    store = TweedentityStore(_address);
+    store = Store(_address);
     require(store.authorized(address(this)) > 0);
     storeSet = true;
   }
@@ -58,7 +58,7 @@ contract TweedentityManager is usingOraclize, Ownable {
     address sender = _tempData[_oraclizeID].sender;
 
     if (isUid(_result)) {
-      store.addTweedentity(sender, screenName, _result);
+      store.setIdentity(sender, screenName, _result);
       ownershipConfirmation(sender, screenName, true);
     } else {
       ownershipConfirmation(sender, screenName, false);

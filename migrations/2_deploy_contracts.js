@@ -1,7 +1,7 @@
-var TweedentityStore = artifacts.require("./TweedentityStore")
-var TweedentityManager = artifacts.require("./TweedentityManager")
+var Store = artifacts.require("./Store")
+var Manager = artifacts.require("./Manager")
 
 module.exports = function(deployer) {
-  deployer.deploy(TweedentityStore)
-  deployer.deploy(TweedentityManager)
+  deployer.deploy(Store)
+  deployer.deploy(Manager)
 }
