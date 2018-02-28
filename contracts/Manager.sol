@@ -9,7 +9,7 @@ import './Store.sol';
 
 contract Manager is usingOraclize, Ownable {
 
-  event ownershipConfirmation(address addr, string screenName, bool success);
+  event ownershipConfirmed(address addr, string uid);
 
   uint public version = 1;
 
@@ -33,7 +33,7 @@ contract Manager is usingOraclize, Ownable {
   function setStore(address _address) onlyOwner public {
     require(_address != 0x0);
     store = Store(_address);
-    require(store.authorized(address(this)) > 0);
+    require(store.amIAuthorized());
     storeSet = true;
   }
 
@@ -57,12 +57,8 @@ contract Manager is usingOraclize, Ownable {
     string memory screenName = _tempData[_oraclizeID].screenName;
     address sender = _tempData[_oraclizeID].sender;
 
-    if (isUid(_result)) {
-      store.setIdentity(sender, screenName, _result);
-      ownershipConfirmation(sender, screenName, true);
-    } else {
-      ownershipConfirmation(sender, screenName, false);
-    }
+    store.setIdentity(sender, _result);
+    ownershipConfirmed(sender, _result);
   }
 
   function addressToString(address x) internal pure returns (string) {
