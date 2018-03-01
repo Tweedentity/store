@@ -18,12 +18,7 @@ contract Manager is usingOraclize, Ownable {
   Store public store;
   bool public storeSet;
 
-  struct TempData {
-    string screenName;
-    address sender;
-  }
-
-  mapping(bytes32 => TempData) internal _tempData;
+  mapping(bytes32 => address) internal __tempData;
 
   modifier isStoreSet() {
     require(storeSet);
@@ -48,14 +43,13 @@ contract Manager is usingOraclize, Ownable {
         "https://api.tweedentity.com/",
         strConcat(_screenName, "/", _id, "/0x", addressToString(msg.sender))
       ), 160000);
-    _tempData[oraclizeID] = TempData(_screenName, msg.sender);
+    __tempData[oraclizeID] = msg.sender;
   }
 
   function __callback(bytes32 _oraclizeID, string _result) public {
     require(msg.sender == oraclize_cbAddress());
 
-    string memory screenName = _tempData[_oraclizeID].screenName;
-    address sender = _tempData[_oraclizeID].sender;
+    address sender = __tempData[_oraclizeID];
 
     store.setIdentity(sender, _result);
     ownershipConfirmed(sender, _result);

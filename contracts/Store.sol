@@ -10,7 +10,7 @@ import '../authorizable/contracts/Authorizable.sol';
 
 contract Store is Authorizable {
 
-  uint public identities = 0;
+  uint public identities;
 
   bool public isDatabase = true;
 
@@ -82,6 +82,7 @@ contract Store is Authorizable {
       // if _address is now associated with a new uid,
       // this removes the association between_address and last uid associated with it
       __addressByUid[__uidByAddress[_address].lastUid] = Address(address(0), __addressByUid[__uidByAddress[_address].lastUid].lastUpdate);
+      identities--;
     }
 
     __uidByAddress[_address] = Uid(_uid, now);
@@ -124,16 +125,20 @@ contract Store is Authorizable {
     return __uidByAddress[_address].lastUid;
   }
 
+  function getUidAsInteger(address _address) public constant returns (uint){
+    return __stringToUint(__uidByAddress[_address].lastUid);
+  }
+
   function getAddress(string _uid) public constant returns (address){
     return __addressByUid[_uid].lastAddress;
   }
 
-  function getUidHash(address _address) public constant returns (bytes32){
-    //    if (isAddressSet(_address)) {
-    return keccak256(__uidByAddress[_address].lastUid);
-    //    } else {
-    //      return keccak256('');
-    //    }
+  function getAddressLastUpdate(address _address) public constant returns (uint) {
+    return __uidByAddress[_address].lastUpdate;
+  }
+
+  function getUidLastUpdate(string _uid) public constant returns (uint) {
+    return __addressByUid[_uid].lastUpdate;
   }
 
   // string methods
@@ -150,6 +155,34 @@ contract Store is Authorizable {
       }
     }
     return true;
+  }
+
+  function __stringToUint(string s) internal pure returns (uint result) {
+    bytes memory b = bytes(s);
+    uint i;
+    result = 0;
+    for (i = 0; i < b.length; i++) {
+      uint c = uint(b[i]);
+      if (c >= 48 && c <= 57) {
+        result = result * 10 + (c - 48);
+      }
+    }
+  }
+
+  function __uintToBytes(uint x) internal pure returns (bytes b) {
+    b = new bytes(32);
+    for (uint i = 0; i < 32; i++) {
+      b[i] = byte(uint8(x / (2 ** (8 * (31 - i)))));
+    }
+  }
+
+  function __bytesToBytes32(bytes b, uint offset) internal pure returns (bytes32) {
+    bytes32 out;
+
+    for (uint i = 0; i < 32; i++) {
+      out |= bytes32(b[offset + i] & 0xFF) >> (i * 8);
+    }
+    return out;
   }
 
 }
