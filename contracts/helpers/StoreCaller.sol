@@ -16,6 +16,9 @@ contract StoreCaller {
   }
 
   // callable methods
+  // Theoretically, there is no need to test them because the
+  // compiler with produce an error when calling any getter that
+  // is return not-allowed dynamic data
 
   function isUidSet(string _uid) public constant returns (bool){
     return store.isUidSet(_uid);

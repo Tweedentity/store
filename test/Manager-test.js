@@ -5,7 +5,6 @@ const sleep = require('sleep')
 
 const Store = artifacts.require('./Store.sol')
 const Manager = artifacts.require('./mocks/ManagerMock.sol')
-const ManagerV2 = artifacts.require('./mocks/ManagerV2Mock.sol')
 
 const fixtures = require('./fixtures')
 const tweet = fixtures.tweets[0]
@@ -25,7 +24,6 @@ contract('Manager', accounts => {
   // return
 
   let manager
-  let managerV2
   let store
   let oraclizeIds = []
 
@@ -35,7 +33,6 @@ contract('Manager', accounts => {
   before(async () => {
     store = await Store.new() //at(await manager.store())
     manager = await Manager.new()
-    manager2 = await ManagerV2.new()
   })
 
   it('should authorize the manager to handle the store', async () => {
@@ -54,7 +51,7 @@ contract('Manager', accounts => {
     gasPrice,
     {
       from: accounts[1],
-      value: gasPrice * 160000,
+      value: gasPrice * 200000,
       gas: 300000
     }))
 
@@ -87,58 +84,49 @@ contract('Manager', accounts => {
       gas: 300000
     })
 
-    let ownershipConfirmation
-    for (let i = 0; i < 15; i++) {
-      console.log('Waiting Oraclize result')
+    let ok = false
+
+    for (let i = 0; i < 30; i++) {
+      console.log('Waiting for result')
       sleep.sleep(1)
-      ownershipConfirmation = await logEvent(manager, {
-        event: 'ownershipConfirmation',
-        logIndex: 1,
-        args: {screenName: tweet.screenName}
-      })
-      if (ownershipConfirmation[0]) {
+      let uid = await store.getUid(accounts[1])
+      if (uid == tweet.userId) {
+        ok = true
         break
       }
     }
 
-    assert.isTrue(ownershipConfirmation[0].args.success)
-    assert.equal(await store.tweedentities(accounts[1]), tweet.screenName)
+    assert.isTrue(ok)
+    // assert.equal(await store.tweedentities(accounts[1]), tweet.screenName)
 
   })
 
-
-  it('should call Oraclize, not recover the signature from the tweet because it is incorrect', async () => {
-
-    const gasPrice = 1e9
-
-    await manager.verifyAccountOwnership(
-    wrongtweet.screenName,
-    wrongtweet.id,
-    gasPrice,
-    {
-      from: accounts[1],
-      value: gasPrice * 160000,
-      gas: 300000
-    })
-
-    let ownershipConfirmation
-    for (let i = 0; i < 15; i++) {
-      // logValue(await manager.remainingGas())
-      console.log('Waiting Oraclize result')
-      sleep.sleep(1)
-      ownershipConfirmation = await logEvent(manager, {
-        event: 'ownershipConfirmation',
-        logIndex: 0,
-        args: {screenName: wrongtweet.screenName}
-      })
-      if (ownershipConfirmation[0]) {
-        break
-      }
-    }
-
-    assert.isFalse(ownershipConfirmation[0].args.success)
-
-  })
+  //
+  // it('should call Oraclize, not recover the signature from the tweet because it is incorrect', async () => {
+  //
+  //   const gasPrice = 1e9
+  //
+  //   await manager.verifyAccountOwnership(
+  //   wrongtweet.screenName,
+  //   wrongtweet.id,
+  //   gasPrice,
+  //   {
+  //     from: accounts[1],
+  //     value: gasPrice * 160000,
+  //     gas: 300000
+  //   })
+  //
+  //   for (let i = 0; i < 30; i++) {
+  //     console.log('Waiting for result')
+  //     sleep.sleep(1)
+  //     if (await manager.callbackCalled()) {
+  //       break
+  //     }
+  //   }
+  //
+  //   assert.isFalse(ownershipConfirmation[0].args.success)
+  //
+  // })
 
 
 })

@@ -1,5 +1,4 @@
 const sleep = require('sleep')
-const Web3 = require('web3')
 
 const assertRevert = require('./helpers/assertRevert')
 const log = require('./helpers/log')

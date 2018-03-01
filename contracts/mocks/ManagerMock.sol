@@ -4,23 +4,16 @@ import '../Manager.sol';
 
 contract ManagerMock is Manager {
 
-  string public result;
-  string public url;
-  bytes32 public oraclizeID;
-
-  event log(string s);
-
-  uint public remainingGas;
-
+//  bool public callbackCalled;
+//
 //  function verifyAccountOwnership(string _screenName, string _id, uint _gasPrice) public payable {
 //    super.verifyAccountOwnership(_screenName, _id, _gasPrice);
-//
-////    remainingGas = msg.gas;
+//    callbackCalled = false;
 //  }
-
+//
 //  function __callback(bytes32 _oraclizeID, string _result) public {
 //    super.__callback(_oraclizeID, _result);
-//    remainingGas = msg.gas;
+//    callbackCalled = true;
 //  }
 
 
