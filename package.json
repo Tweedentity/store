@@ -1,0 +1,19 @@
+{
+  "name": "tweedentity",
+  "version": "0.0.1",
+  "description": "tweedentity",
+  "dependencies": {},
+  "devDependencies": {
+    "lodash": "^4.17.4",
+    "sleep": "^5.1.1",
+    "truffle-hdwallet-provider": "0.0.3"
+  },
+  "scripts": {
+    "testServer": "ganache-cli --mnemonic 'tweedentity'",
+    "bridge": "cd ethereum-bridge && node bridge -H localhost:8545 -a 9 --dev",
+    "test": "truffle test",
+    "clear": "rm -rf build/contracts",
+    "deployToRinkeby": "rm -rf build && source ../ifo-rinkeby.env && truffle migrate --network rinkeby",
+    "deployToMainnet": "rm -rf build && source ../ifo-mainnet.env && truffle migrate --network mainnet"
+  }
+}
