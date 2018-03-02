@@ -4,12 +4,10 @@ const logEvent = require('./helpers/logEvent')
 const sleep = require('sleep')
 
 const Store = artifacts.require('./Store.sol')
-const Manager = artifacts.require('./mocks/ManagerMock.sol')
+const Manager = artifacts.require('./Manager.sol')
 
 const fixtures = require('./fixtures')
 const tweet = fixtures.tweets[0]
-const wrongtweet = fixtures.tweets[1]
-const signature = tweet.signature
 
 
 function logValue(...x) {
@@ -97,36 +95,9 @@ contract('Manager', accounts => {
     }
 
     assert.isTrue(ok)
-    // assert.equal(await store.tweedentities(accounts[1]), tweet.screenName)
 
   })
 
-  //
-  // it('should call Oraclize, not recover the signature from the tweet because it is incorrect', async () => {
-  //
-  //   const gasPrice = 1e9
-  //
-  //   await manager.verifyAccountOwnership(
-  //   wrongtweet.screenName,
-  //   wrongtweet.id,
-  //   gasPrice,
-  //   {
-  //     from: accounts[1],
-  //     value: gasPrice * 160000,
-  //     gas: 300000
-  //   })
-  //
-  //   for (let i = 0; i < 30; i++) {
-  //     console.log('Waiting for result')
-  //     sleep.sleep(1)
-  //     if (await manager.callbackCalled()) {
-  //       break
-  //     }
-  //   }
-  //
-  //   assert.isFalse(ownershipConfirmation[0].args.success)
-  //
-  // })
 
 
 })
