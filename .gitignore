@@ -18,3 +18,4 @@ log
 installed_contracts
 package-lock.json
 *.env
+ignoreMe
