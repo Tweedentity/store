@@ -1,15 +1,16 @@
 module.exports = {
   tweets: [{
-    id: '950479222723653632',
+    id: '971116316777041921',
     screenName: 'startupnewsit',
     userId: '137042753',
-    // The address is accounts[1] running:
+    // The address used here is accounts[1] running:
     //     ganache-cli --mnemonic 'tweedentity'
     signature: {
       "address": "0x185f86b29bce5b40e54600959c710f1314fa5f45",
-      "msg": "startupnewsit@tweedentity",
-      "sig": "0x1c67c47ba1587c950c36268b25e7fbda992408d17b4a50e11e00d6c683af06df032d72e8adb46a9599d056bd97b50203f9cf4c3ba498208acc30da1697170d0b1c",
-      "version": "2"
+      "msg": "twitter/137042753@tweedentity",
+      "sig": "0xabb708bb366a13dd7990883a696f1502d64db4a1de45bfb6de1c8f1e37cb8ebc7c9190a5051615bd7623f7e4e3cec33f603ba363d111aa50787e43a82d75db391c",
+      "version": "3",
+      "signer": "MEW"
     }
   },{
     id: '952375450726100993',
