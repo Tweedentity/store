@@ -13,7 +13,7 @@
     "bridge": "cd ethereum-bridge && node bridge -H localhost:8545 -a 9 --dev",
     "test": "truffle test",
     "clear": "rm -rf build/contracts",
-    "deployToRinkeby": "rm -rf build && source ../ifo-rinkeby.env && truffle migrate --network rinkeby",
-    "deployToMainnet": "rm -rf build && source ../ifo-mainnet.env && truffle migrate --network mainnet"
+    "deployToRinkeby": "rm -rf build && source ../../ifo-rinkeby.env && truffle migrate --network rinkeby",
+    "deployToMainnet": "rm -rf build && source ../../ifo-mainnet.env && truffle migrate --network mainnet"
   }
 }
