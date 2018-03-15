@@ -27,7 +27,6 @@ contract('Manager', accounts => {
 
   const hashMessage = require('./helpers/hashMessage')(web3)
 
-
   before(async () => {
     store = await Store.new() //at(await manager.store())
     manager = await Manager.new()
@@ -60,12 +59,8 @@ contract('Manager', accounts => {
     assert.isTrue(await manager.storeSet())
   })
 
-  it('should revert if the screenName is empty', async () => {
-    await assertRevert(manager.verifyTwitterAccountOwnership('', tweet.id, 10e9))
-  })
-
   it('should revert if the tweet id is empty', async () => {
-    await assertRevert(manager.verifyTwitterAccountOwnership(tweet.screenName, '', 21e9))
+    await assertRevert(manager.verifyTwitterAccountOwnership('', 21e9))
   })
 
   it('should call Oraclize, recover the signature from the tweet and verify that it is correct', async () => {
@@ -73,7 +68,6 @@ contract('Manager', accounts => {
     const gasPrice = 1e9
 
     await manager.verifyTwitterAccountOwnership(
-    tweet.screenName,
     tweet.id,
     gasPrice, // << 1 Gwei
     {
