@@ -43,13 +43,13 @@ contract('Manager', accounts => {
 
     await assertRevert(
     manager.verifyTwitterAccountOwnership(
-    tweet.screenName,
     tweet.id,
     gasPrice,
+    16e4,
     {
       from: accounts[1],
       value: gasPrice * 200000,
-      gas: 300000
+      gas: 300000 // 171897 on Ropsten
     }))
 
   })
@@ -60,20 +60,22 @@ contract('Manager', accounts => {
   })
 
   it('should revert if the tweet id is empty', async () => {
-    await assertRevert(manager.verifyTwitterAccountOwnership('', 21e9))
+    await assertRevert(manager.verifyTwitterAccountOwnership('', 21e9, 16e4))
   })
 
   it('should call Oraclize, recover the signature from the tweet and verify that it is correct', async () => {
 
     const gasPrice = 1e9
+    const gasLimit = 16e4
 
     await manager.verifyTwitterAccountOwnership(
     tweet.id,
-    gasPrice, // << 1 Gwei
+    gasPrice,
+    gasLimit,
     {
       from: accounts[1],
-      value: gasPrice * 160000,
-      gas: 300000 // 200963 on testnet
+      value: gasPrice * gasLimit,
+      gas: 300000 // 171897 on testnet
     })
 
     let ok = false

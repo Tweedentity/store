@@ -33,7 +33,7 @@ contract Manager is usingOraclize, Ownable {
   }
 
   // Verifies that the signature published on twitter is correct
-  function verifyTwitterAccountOwnership(string _id, uint _gasPrice) public isStoreSet payable {
+  function verifyTwitterAccountOwnership(string _id, uint _gasPrice, uint _gasLimit) public isStoreSet payable {
     require(bytes(_id).length >= 18);
 
     oraclize_setCustomGasPrice(_gasPrice);
@@ -41,7 +41,7 @@ contract Manager is usingOraclize, Ownable {
     bytes32 oraclizeID = oraclize_query(
       "URL",
       strConcat("https://api.tweedentity.net/tweet/", _id, "/0x", addressToString(msg.sender)),
-      160000
+      _gasLimit
     );
     __tempData[oraclizeID] = msg.sender;
   }
