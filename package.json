@@ -6,7 +6,8 @@
   "devDependencies": {
     "lodash": "^4.17.4",
     "sleep": "^5.1.1",
-    "truffle-hdwallet-provider": "0.0.3"
+    "truffle-hdwallet-provider": "0.0.3",
+    "zeppelin-solidity": "^1.8.0"
   },
   "scripts": {
     "testServer": "ganache-cli --mnemonic 'tweedentity'",
