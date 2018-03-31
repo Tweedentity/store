@@ -1,8 +1,8 @@
 pragma solidity ^0.4.18;
 
 
-import 'oraclize/usingOraclize.sol';
-import 'zeppelin/ownership/Ownable.sol';
+import '../ethereum-api/oraclizeAPI.sol';
+import 'zeppelin-solidity/contracts/ownership/Ownable.sol';
 
 import './Store.sol';
 
