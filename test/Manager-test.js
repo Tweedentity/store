@@ -75,7 +75,7 @@ contract('Manager', accounts => {
     {
       from: accounts[1],
       value: gasPrice * gasLimit,
-      gas: 300000 // 171897 on testnet
+      gas: 400000 // 171897 on testnet
     })
 
     let ok = false

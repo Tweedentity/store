@@ -228,7 +228,7 @@ contract Authorizable is Ownable {
     return authorized[msg.sender] > 0;
   }
 
-  function getLevelOfAuthorization() external constant returns (uint) {
+  function getMyLevelOfAuthorization() external constant returns (uint) {
     return authorized[msg.sender];
   }
 
