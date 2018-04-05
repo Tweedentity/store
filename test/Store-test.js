@@ -21,6 +21,7 @@ contract('Store', accounts => {
   let bob = accounts[3]
   let alice = accounts[4]
   let rita = accounts[5]
+  let developer = accounts[6]
 
   let id1 = '12345'
   let id2 = '23456'
@@ -57,6 +58,11 @@ contract('Store', accounts => {
     assert.equal(await store.authorized(customerService), 30)
   })
 
+  it('should authorize developer to change params', async () => {
+    await store.authorize(developer, 20)
+    assert.equal(await store.authorized(developer), 20)
+  })
+
   it('should add a new identity with uid id1 for rita', async () => {
     assert.isFalse(await store.isUidSet(id1))
 
@@ -81,7 +87,7 @@ contract('Store', accounts => {
   })
 
   it('should change minimumTimeBeforeUpdate to 1 second', async () => {
-    await store.changeMinimumTimeBeforeUpdate(1, {from: manager})
+    await store.changeMinimumTimeBeforeUpdate(1, {from: developer})
     assert.equal(await store.minimumTimeBeforeUpdate(), 1)
   })
 

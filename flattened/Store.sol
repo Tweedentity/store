@@ -272,6 +272,7 @@ contract Store is Authorizable {
   uint public identities;
   uint public managerLevel = 40;
   uint public customerServiceLevel = 30;
+  uint public devLevel = 20;
 
   bool public isDatabase = true;
 
@@ -295,11 +296,11 @@ contract Store is Authorizable {
 
   // events
 
-  event tweedentityAdded(address _address, string _uid);
+  event TweedentityAdded(address indexed _address, string _uid);
 
-  event tweedentityRemoved(address _address, string _uid);
+  event TweedentityRemoved(address indexed _address, string _uid);
 
-  event minimumTimeBeforeUpdateChanged(uint _time);
+  event MinimumTimeBeforeUpdateChanged(uint _time);
 
   // helpers
 
@@ -350,7 +351,7 @@ contract Store is Authorizable {
     __addressByUid[_uid] = Address(_address, now);
     identities++;
 
-    tweedentityAdded(_address, _uid);
+    TweedentityAdded(_address, _uid);
   }
 
   function removeIdentity(address _address) public onlyAuthorizedAtLevel(customerServiceLevel) {
@@ -370,14 +371,14 @@ contract Store is Authorizable {
     __addressByUid[uid] = Address(address(0), __addressByUid[uid].lastUpdate);
     identities--;
 
-    tweedentityRemoved(_address, uid);
+    TweedentityRemoved(_address, uid);
   }
 
   // Changes the minimum time required before being allowed to update
   // a tweedentity associating a new address to a screenName
-  function changeMinimumTimeBeforeUpdate(uint _newMinimumTime) onlyAuthorizedAtLevel(managerLevel) public {
+  function changeMinimumTimeBeforeUpdate(uint _newMinimumTime) onlyAuthorizedAtLevel(devLevel) public {
     minimumTimeBeforeUpdate = _newMinimumTime;
-    minimumTimeBeforeUpdateChanged(_newMinimumTime);
+    MinimumTimeBeforeUpdateChanged(_newMinimumTime);
   }
 
   // getters
