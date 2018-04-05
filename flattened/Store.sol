@@ -1,6 +1,6 @@
 pragma solidity ^0.4.18;
 
-// File: zeppelin/ownership/Ownable.sol
+// File: zeppelin-solidity/contracts/ownership/Ownable.sol
 
 /**
  * @title Ownable
@@ -18,10 +18,9 @@ contract Ownable {
    * @dev The Ownable constructor sets the original `owner` of the contract to the sender
    * account.
    */
-  function Ownable() {
+  function Ownable() public {
     owner = msg.sender;
   }
-
 
   /**
    * @dev Throws if called by any account other than the owner.
@@ -31,12 +30,11 @@ contract Ownable {
     _;
   }
 
-
   /**
    * @dev Allows the current owner to transfer control of the contract to a newOwner.
    * @param newOwner The address to transfer ownership to.
    */
-  function transferOwnership(address newOwner) onlyOwner public {
+  function transferOwnership(address newOwner) public onlyOwner {
     require(newOwner != address(0));
     OwnershipTransferred(owner, newOwner);
     owner = newOwner;
@@ -46,28 +44,11 @@ contract Ownable {
 
 // File: authorizable/contracts/Authorizable.sol
 
-// @title Authorizable
-// The Authorizable contract provides authorization control functions.
-
-/*
-  The level is a uint <= maxLevel (64 by default)
-  
-    0 means not authorized
-    1..maxLevel means authorized
-
-  Having more levels allows to create hierarchical roles.
-  For example:
-    ...
-    operatorLevel: 6
-    teamManagerLevel: 10
-    ...
-    CTOLevel: 32
-    ...
-
-  If the owner wants to execute functions which require explicit authorization, it must authorize itself.
-  
-  If you need complex level, in the extended contract, you can add a function to generate unique roles based on combination of levels. The possibilities are almost unlimited, since the level is a uint256
-*/
+/**
+ * @title Authorizable
+ * @author Francesco Sullo <francesco@sullo.co>
+ * @dev The Authorizable contract provides governance.
+ */
 
 contract Authorizable is Ownable {
 
@@ -83,6 +64,11 @@ contract Authorizable is Ownable {
   uint public maxLevel = 64;
   uint public authorizerLevel = 56;
 
+  /**
+   * @dev Set the range of levels accepted by the contract
+   * @param _maxLevel The max level acceptable
+   * @param _authorizerLevel The minimum level to qualify a wallet as authorizer
+   */
   function setLevels(uint _maxLevel, uint _authorizerLevel) external onlyOwner {
     // this must be called before authorizing any address
     require(totalAuthorized == 0);
@@ -93,38 +79,48 @@ contract Authorizable is Ownable {
     authorizerLevel = _authorizerLevel;
   }
 
-  // Throws if called by any account which is not authorized.
+  /**
+   * @dev Throws if called by any account which is not authorized.
+   */
   modifier onlyAuthorized() {
     require(authorized[msg.sender] > 0);
     _;
   }
 
-  // Throws if called by any account which is not authorized at a specific level.
+  /**
+   * @dev Throws if called by any account which is not
+   *      authorized at a specific level.
+   * @param _level Level required
+   */
   modifier onlyAuthorizedAtLevel(uint _level) {
     require(authorized[msg.sender] == _level);
     _;
   }
 
-  // Throws if called by any account which is not authorized at some of the specified levels.
+  /**
+   * @dev Throws if called by any account which is not authorized
+   *      at some of the specified levels.
+   * @param _levels Levels required
+   */
   modifier onlyAuthorizedAtLevels(uint[] _levels) {
     require(__hasLevel(authorized[msg.sender], _levels));
     _;
   }
 
-  // Throws if called by any account which is not authorized at a minimum required level.
-  modifier onlyAuthorizedAtLevelMoreThan(uint _level) {
-    require(authorized[msg.sender] > _level);
+  /**
+   * @dev Throws if called by any account which has
+   *      a level of authorization not in the interval
+   * @param _minLevel Minimum level required
+   * @param _maxLevel Maximum level required
+   */
+  modifier onlyAuthorizedAtLevelsWithin(uint _minLevel, uint _maxLevel) {
+    require(authorized[msg.sender] >= _minLevel && authorized[msg.sender] <= _maxLevel);
     _;
   }
 
-  // Throws if called by any account which has a level of authorization less than a certan maximum.
-  modifier onlyAuthorizedAtLevelLessThan(uint _level) {
-    require(authorized[msg.sender] > 0 && authorized[msg.sender] < _level);
-    _;
-  }
-
-  // same modifiers but including the owner
-
+  /**
+    * @dev same modifiers above, but including the owner
+    */
   modifier onlyOwnerOrAuthorized() {
     require(msg.sender == owner || authorized[msg.sender] > 0);
     _;
@@ -140,45 +136,56 @@ contract Authorizable is Ownable {
     _;
   }
 
-  modifier onlyOwnerOrAuthorizedAtLevelMoreThan(uint _level) {
-    require(msg.sender == owner || authorized[msg.sender] > _level);
+  modifier onlyOwnerOrAuthorizedAtLevelsIn(uint _minLevel, uint _maxLevel) {
+    require(msg.sender == owner || (authorized[msg.sender] >= _minLevel && authorized[msg.sender] <= _maxLevel));
     _;
   }
 
-  modifier onlyOwnerOrAuthorizedAtLevelLessThan(uint _level) {
-    require(msg.sender == owner || (authorized[msg.sender] > 0 && authorized[msg.sender] < _level));
-    _;
-  }
-
-  // Throws if called by anyone who is not an authorizer.
+  /**
+    * @dev Throws if called by anyone who is not an authorizer.
+    */
   modifier onlyAuthorizer() {
     require(msg.sender == owner || authorized[msg.sender] >= authorizerLevel);
     _;
   }
 
 
-  // methods
-
-  // Allows the current owner and authorized with level >= authorizerLevel to add a new authorized address, or remove it, setting _level to 0
+  /**
+    * @dev Allows the current owner and authorized with level >= authorizerLevel
+    *      to add a new authorized address, or remove it, setting _level to 0
+    * @param _address The address to be authorized
+    * @param _level The level of authorization
+    */
   function authorize(address _address, uint _level) onlyAuthorizer external {
     __authorize(_address, _level);
   }
 
-  // Allows the current owner to remove all the authorizations.
+  /**
+   * @dev Allows the current owner to remove all the authorizations.
+   *      To avoid huge loops going out of gas, we check the gas.
+   *      If at the end of the operation there are still authorized
+   *      wallets the operation must be repeated.
+   */
   function deAuthorizeAll() onlyOwner external {
-    for (uint i = 0; i < __authorized.length; i++) {
+    for (uint i = 0; i < __authorized.length && msg.gas > 33e3; i++) {
       if (__authorized[i] != address(0)) {
         __authorize(__authorized[i], 0);
       }
     }
   }
 
-  // Allows an authorized to de-authorize itself.
+  /**
+   * @dev Allows an authorized to de-authorize itself.
+   */
   function deAuthorize() onlyAuthorized external {
     __authorize(msg.sender, 0);
   }
 
-  // internal functions
+  /**
+   * @dev Performs the actual authorization/de-authorization
+   * @param _address The address to be authorized
+   * @param _level The level of authorization. 0 to remove it.
+   */
   function __authorize(address _address, uint _level) internal {
     require(_address != address(0));
     require(_level >= 0 && _level <= maxLevel);
@@ -193,7 +200,18 @@ contract Authorizable is Ownable {
         }
       }
       if (alreadyIndexed == false) {
-        __authorized.push(_address);
+        bool emptyFound = false;
+        // before we try to reuse an empty element of the array
+        for (i = 0; i < __authorized.length; i++) {
+          if (__authorized[i] == 0) {
+            __authorized[i] = _address;
+            emptyFound = true;
+            break;
+          }
+        }
+        if (emptyFound == false) {
+          __authorized.push(_address);
+        }
         totalAuthorized++;
       }
       AuthorizedAdded(msg.sender, _address, _level);
@@ -211,6 +229,11 @@ contract Authorizable is Ownable {
     }
   }
 
+  /**
+   * @dev Check is a level is included in an array of levels. Used by modifiers
+   * @param _level Level to be checked
+   * @param _levels Array of required levels
+   */
   function __hasLevel(uint _level, uint[] _levels) internal pure returns (bool) {
     bool has = false;
     for (uint i; i < _levels.length; i++) {
@@ -222,14 +245,18 @@ contract Authorizable is Ownable {
     return has;
   }
 
-  // helpers callable by other contracts
-
+  /**
+   * @dev Allows a wallet to check if it is authorized
+   */
   function amIAuthorized() external constant returns (bool) {
     return authorized[msg.sender] > 0;
   }
 
-  function getLevelOfAuthorization() external constant returns (uint) {
-    return authorized[msg.sender];
+  /**
+   * @dev Allows any authorizer to get the list of the authorized wallets
+   */
+  function getAuthorized() external onlyAuthorizer constant returns(address[]) {
+    return __authorized;
   }
 
 }
@@ -243,6 +270,9 @@ contract Authorizable is Ownable {
 contract Store is Authorizable {
 
   uint public identities;
+  uint public managerLevel = 40;
+  uint public customerServiceLevel = 30;
+  uint public devLevel = 20;
 
   bool public isDatabase = true;
 
@@ -269,6 +299,8 @@ contract Store is Authorizable {
   event TweedentityAdded(address indexed _address, string _uid);
 
   event TweedentityRemoved(address indexed _address, string _uid);
+
+  event MinimumTimeBeforeUpdateChanged(uint _time);
 
   // helpers
 
@@ -303,7 +335,7 @@ contract Store is Authorizable {
 
   // primary methods
 
-  function setIdentity(address _address, string _uid) external onlyAuthorized {
+  function setIdentity(address _address, string _uid) public onlyAuthorizedAtLevel(managerLevel) {
     require(_address != address(0));
     require(__isUid(_uid));
     require(isUpgradable(_address, _uid));
@@ -322,11 +354,11 @@ contract Store is Authorizable {
     TweedentityAdded(_address, _uid);
   }
 
-  function removeIdentity(address _address) external onlyOwnerOrAuthorized {
+  function removeIdentity(address _address) public onlyAuthorizedAtLevel(customerServiceLevel) {
     __removeIdentity(_address);
   }
 
-  function removeMyIdentity() external {
+  function removeMyIdentity() public {
     __removeIdentity(msg.sender);
   }
 
@@ -344,29 +376,30 @@ contract Store is Authorizable {
 
   // Changes the minimum time required before being allowed to update
   // a tweedentity associating a new address to a screenName
-  function changeMinimumTimeBeforeUpdate(uint _newMinimumTime) external onlyAuthorized {
+  function changeMinimumTimeBeforeUpdate(uint _newMinimumTime) onlyAuthorizedAtLevel(devLevel) public {
     minimumTimeBeforeUpdate = _newMinimumTime;
+    MinimumTimeBeforeUpdateChanged(_newMinimumTime);
   }
 
   // getters
 
-  function getUid(address _address) external constant returns (string){
+  function getUid(address _address) public constant returns (string){
     return __uidByAddress[_address].lastUid;
   }
 
-  function getUidAsInteger(address _address) external constant returns (uint){
+  function getUidAsInteger(address _address) public constant returns (uint){
     return __stringToUint(__uidByAddress[_address].lastUid);
   }
 
-  function getAddress(string _uid) external constant returns (address){
+  function getAddress(string _uid) public constant returns (address){
     return __addressByUid[_uid].lastAddress;
   }
 
-  function getAddressLastUpdate(address _address) external constant returns (uint) {
+  function getAddressLastUpdate(address _address) public constant returns (uint) {
     return __uidByAddress[_address].lastUpdate;
   }
 
-  function getUidLastUpdate(string _uid) external constant returns (uint) {
+  function getUidLastUpdate(string _uid) public constant returns (uint) {
     return __addressByUid[_uid].lastUpdate;
   }
 

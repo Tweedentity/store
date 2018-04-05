@@ -16,10 +16,12 @@ contract('Store', accounts => {
   let storeCaller
 
   let owner = accounts[0]
-  let bob = accounts[1]
-  let alice = accounts[2]
-  let sam = accounts[3]
-  let rita = accounts[4]
+  let manager = accounts[1]
+  let customerService = accounts[2]
+  let bob = accounts[3]
+  let alice = accounts[4]
+  let rita = accounts[5]
+  let developer = accounts[6]
 
   let id1 = '12345'
   let id2 = '23456'
@@ -45,15 +47,26 @@ contract('Store', accounts => {
     await assertRevert(store.setIdentity(rita, id1))
   })
 
-  it('should authorize bob to handle the data', async () => {
-    await store.authorize(bob, 1)
-    assert.equal(await store.authorized(bob), 1)
+  it('should authorize manager to handle the data', async () => {
+    await store.authorize(manager, 40)
+    assert.isTrue(await store.amIAuthorized({from: manager}))
+    assert.equal(await store.authorized(manager), 40)
+  })
+
+  it('should authorize customerService to do customer service', async () => {
+    await store.authorize(customerService, 30)
+    assert.equal(await store.authorized(customerService), 30)
+  })
+
+  it('should authorize developer to change params', async () => {
+    await store.authorize(developer, 20)
+    assert.equal(await store.authorized(developer), 20)
   })
 
   it('should add a new identity with uid id1 for rita', async () => {
     assert.isFalse(await store.isUidSet(id1))
 
-    await store.setIdentity(rita, id1, {from: bob})
+    await store.setIdentity(rita, id1, {from: manager})
     assert.equal(await store.getAddress(id1), rita)
     assert.isTrue(await store.isUidSet(id1))
     assert.isTrue(await store.isAddressSet(rita))
@@ -66,7 +79,7 @@ contract('Store', accounts => {
   })
 
   it('should revert trying to update rita with the uid id2', async () => {
-    await assertRevert(store.setIdentity(rita, id2, {from: bob}))
+    await assertRevert(store.setIdentity(rita, id2, {from: manager}))
   })
 
   it('should revert trying to associate accounts[5] to uid id3 using a not authorized owner', async () => {
@@ -74,7 +87,7 @@ contract('Store', accounts => {
   })
 
   it('should change minimumTimeBeforeUpdate to 1 second', async () => {
-    await store.changeMinimumTimeBeforeUpdate(1, {from: bob})
+    await store.changeMinimumTimeBeforeUpdate(1, {from: developer})
     assert.equal(await store.minimumTimeBeforeUpdate(), 1)
   })
 
@@ -82,30 +95,30 @@ contract('Store', accounts => {
     await wait()
   })
 
-  it('should revert trying to associate sam with id1 since this is associated w/ rita', async () => {
-    await assertRevert(store.setIdentity(sam, id1, {from: bob}))
+  it('should revert trying to associate bob with id1 since this is associated w/ rita', async () => {
+    await assertRevert(store.setIdentity(bob, id1, {from: manager}))
   })
 
   it('should revert trying to associate again id1 to rita', async () => {
-    await assertRevert(store.setIdentity(rita, id1, {from: bob}))
+    await assertRevert(store.setIdentity(rita, id1, {from: manager}))
   })
 
   it('should associate now rita with the uid id2 and reverse after 1 second', async () => {
-    await store.setIdentity(rita, id2, {from: bob})
+    await store.setIdentity(rita, id2, {from: manager})
     assert.equal(await store.identities(), 1)
     assert.equal(await store.getUid(rita), id2)
 
     await wait()
     assert.isTrue(await store.isUidUpgradable(id1))
 
-    await store.setIdentity(rita, id1, {from: bob})
+    await store.setIdentity(rita, id1, {from: manager})
     assert.isFalse(await store.isUidUpgradable(id1))
     assert.equal(await store.identities(), 1)
     assert.equal(await store.getUid(rita), id1)
   })
 
   it('should associate id2 to alice', async () => {
-    await store.setIdentity(alice, id2, {from: bob})
+    await store.setIdentity(alice, id2, {from: manager})
     assert.equal(await store.identities(), 2)
   })
 
@@ -114,23 +127,27 @@ contract('Store', accounts => {
     assert.equal(await store.getUid(rita), id1)
   })
 
-  it('should deassociate id1 from rita and allow sam to be associated to id1', async () => {
+  it('should allow customerService to remove the identity for rita', async () => {
 
     assert.isTrue(await store.isAddressSet(rita))
 
-    await store.removeIdentity(rita, {from: bob})
+    await store.removeIdentity(rita, {from: customerService})
     assert.equal(await store.getUid(rita), '')
+
+  })
+
+  it('should allow bob to be associated to id1 after 1 second', async () => {
 
     await wait()
 
     assert.isTrue(await store.isUidUpgradable(id1))
 
-    await store.setIdentity(sam, id1, {from: bob})
+    await store.setIdentity(bob, id1, {from: manager})
     await wait()
 
     assert.isFalse(await store.isAddressSet(rita))
-    assert.equal(await store.getUid(sam), id1)
-    assert.equal(await store.getAddress(id1), sam)
+    assert.equal(await store.getUid(bob), id1)
+    assert.equal(await store.getAddress(id1), bob)
     assert.isTrue(await store.isUidUpgradable(id1))
 
   })
@@ -138,21 +155,21 @@ contract('Store', accounts => {
   it('should verify that all the function callable from other contracts are actually callable', async () => {
 
     assert.isTrue(await storeCaller.isUidSet(id1))
-    assert.isTrue(await storeCaller.isAddressSet(sam))
+    assert.isTrue(await storeCaller.isAddressSet(bob))
     assert.isTrue(await storeCaller.isUidUpgradable(id1))
-    assert.isTrue(await storeCaller.isAddressUpgradable(sam))
-    assert.isTrue(await storeCaller.isUpgradable(sam, id2))
-    assert.isFalse(await storeCaller.isUpgradable(sam, id1))
-    assert.equal(await storeCaller.getUidAsInteger(sam), 12345)
-    assert.equal(await storeCaller.getAddress(id1), sam)
-    assert.equal(await storeCaller.getAddressLastUpdate(sam), (await store.getAddressLastUpdate(sam)).valueOf())
+    assert.isTrue(await storeCaller.isAddressUpgradable(bob))
+    assert.isTrue(await storeCaller.isUpgradable(bob, id2))
+    assert.isFalse(await storeCaller.isUpgradable(bob, id1))
+    assert.equal(await storeCaller.getUidAsInteger(bob), 12345)
+    assert.equal(await storeCaller.getAddress(id1), bob)
+    assert.equal(await storeCaller.getAddressLastUpdate(bob), (await store.getAddressLastUpdate(bob)).valueOf())
     assert.equal(await storeCaller.getUidLastUpdate(id1), (await store.getUidLastUpdate(id1)).valueOf())
   })
 
 
-  it('should allow sam to remove their own identity', async () => {
-    await store.removeMyIdentity({from: sam})
-    assert.equal(await store.getUid(sam), '')
+  it('should allow bob to remove their own identity', async () => {
+    await store.removeMyIdentity({from: bob})
+    assert.equal(await store.getUid(bob), '')
     assert.equal(await store.getAddress(id1), 0)
   })
 

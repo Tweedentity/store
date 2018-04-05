@@ -1,7 +1,7 @@
 pragma solidity ^0.4.18;
 
 
-import '../authorizable/contracts/Authorizable.sol';
+import 'authorizable/contracts/Authorizable.sol';
 
 
 // Handles the pure data and returns info about the data.
@@ -11,6 +11,9 @@ import '../authorizable/contracts/Authorizable.sol';
 contract Store is Authorizable {
 
   uint public identities;
+  uint public managerLevel = 40;
+  uint public customerServiceLevel = 30;
+  uint public devLevel = 20;
 
   bool public isDatabase = true;
 
@@ -34,11 +37,11 @@ contract Store is Authorizable {
 
   // events
 
-  event tweedentityAdded(address _address, string _uid);
+  event TweedentityAdded(address indexed _address, string _uid);
 
-  event tweedentityRemoved(address _address, string _uid);
+  event TweedentityRemoved(address indexed _address, string _uid);
 
-  event minimumTimeBeforeUpdateChanged(uint _time);
+  event MinimumTimeBeforeUpdateChanged(uint _time);
 
   // helpers
 
@@ -73,7 +76,7 @@ contract Store is Authorizable {
 
   // primary methods
 
-  function setIdentity(address _address, string _uid) public onlyAuthorized {
+  function setIdentity(address _address, string _uid) public onlyAuthorizedAtLevel(managerLevel) {
     require(_address != address(0));
     require(__isUid(_uid));
     require(isUpgradable(_address, _uid));
@@ -89,10 +92,10 @@ contract Store is Authorizable {
     __addressByUid[_uid] = Address(_address, now);
     identities++;
 
-    tweedentityAdded(_address, _uid);
+    TweedentityAdded(_address, _uid);
   }
 
-  function removeIdentity(address _address) public onlyOwnerOrAuthorized {
+  function removeIdentity(address _address) public onlyAuthorizedAtLevel(customerServiceLevel) {
     __removeIdentity(_address);
   }
 
@@ -109,14 +112,14 @@ contract Store is Authorizable {
     __addressByUid[uid] = Address(address(0), __addressByUid[uid].lastUpdate);
     identities--;
 
-    tweedentityRemoved(_address, uid);
+    TweedentityRemoved(_address, uid);
   }
 
   // Changes the minimum time required before being allowed to update
   // a tweedentity associating a new address to a screenName
-  function changeMinimumTimeBeforeUpdate(uint _newMinimumTime) onlyAuthorized public {
+  function changeMinimumTimeBeforeUpdate(uint _newMinimumTime) onlyAuthorizedAtLevel(devLevel) public {
     minimumTimeBeforeUpdate = _newMinimumTime;
-    minimumTimeBeforeUpdateChanged(_newMinimumTime);
+    MinimumTimeBeforeUpdateChanged(_newMinimumTime);
   }
 
   // getters
