@@ -33,13 +33,15 @@ contract('Manager', accounts => {
   })
 
   it('should authorize the manager to handle the store', async () => {
-    await store.authorize(manager.address, 1)
-    assert.isTrue(await store.authorized(manager.address) == 1)
+    const managerLevel = (await store.managerLevel()).valueOf()
+    await store.authorize(manager.address, managerLevel)
+    assert.isTrue(await store.authorized(manager.address) == managerLevel)
   })
 
   it('should revert trying to verify an account before setting the store', async () => {
 
     const gasPrice = 1e9
+    const gasLimit = 16e4
 
     await assertRevert(
     manager.verifyTwitterAccountOwnership(
@@ -48,7 +50,7 @@ contract('Manager', accounts => {
     16e4,
     {
       from: accounts[1],
-      value: gasPrice * 200000,
+      value: gasPrice * gasLimit,
       gas: 300000 // 171897 on Ropsten
     }))
 
@@ -75,7 +77,7 @@ contract('Manager', accounts => {
     {
       from: accounts[1],
       value: gasPrice * gasLimit,
-      gas: 400000 // 171897 on testnet
+      gas: 25e4 // 171897 on testnet
     })
 
     let ok = false
