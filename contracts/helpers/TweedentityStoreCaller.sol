@@ -1,18 +1,18 @@
 pragma solidity ^0.4.18;
 
 
-import '../Store.sol';
+import '../TweedentityStore.sol';
 
 
-// This contract is for testing the Store's methods
+// This contract is for testing the TweedentityStore's methods
 // which are callable from other contracts
 
-contract StoreCaller {
+contract TweedentityStoreCaller {
 
-  Store public store;
+  TweedentityStore public store;
 
   function setStore(address _storeAddress) public {
-    store = Store(_storeAddress);
+    store = TweedentityStore(_storeAddress);
   }
 
   // callable methods

@@ -3,8 +3,8 @@ const logEvent = require('./helpers/logEvent')
 
 const sleep = require('sleep')
 
-const Store = artifacts.require('./Store.sol')
-const Manager = artifacts.require('./Manager.sol')
+const TweedentityStore = artifacts.require('./TweedentityStore.sol')
+const TweedentityManager = artifacts.require('./TweedentityManager.sol')
 
 const fixtures = require('./fixtures')
 const tweet = fixtures.tweets[0]
@@ -17,7 +17,7 @@ function logValue(...x) {
 }
 
 
-contract('Manager', accounts => {
+contract('TweedentityManager', accounts => {
 
   // return
 
@@ -28,8 +28,8 @@ contract('Manager', accounts => {
   const hashMessage = require('./helpers/hashMessage')(web3)
 
   before(async () => {
-    store = await Store.new() //at(await manager.store())
-    manager = await Manager.new()
+    store = await TweedentityStore.new() //at(await manager.store())
+    manager = await TweedentityManager.new()
   })
 
   it('should authorize the manager to handle the store', async () => {

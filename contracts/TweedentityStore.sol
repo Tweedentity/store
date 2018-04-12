@@ -5,10 +5,10 @@ import 'authorizable/contracts/Authorizable.sol';
 
 
 // Handles the pure data and returns info about the data.
-// The logic is implemented in Store, which is upgradable
-// because can be set as the new owner of Store
+// The logic is implemented in TweedentityTweedentityStore, which is upgradable
+// because can be set as the new owner of TweedentityStore
 
-contract Store is Authorizable {
+contract TweedentityStore is Authorizable {
 
   uint public identities;
   uint public managerLevel = 40;
