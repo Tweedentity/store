@@ -3,14 +3,14 @@ const sleep = require('sleep')
 const assertRevert = require('./helpers/assertRevert')
 const log = require('./helpers/log')
 
-const Store = artifacts.require('./mocks/StoreMock.sol')
-const StoreCaller = artifacts.require('./helpers/StoreCaller')
+const TweedentityStore = artifacts.require('./mocks/TweedentityStoreMock.sol')
+const TweedentityStoreCaller = artifacts.require('./helpers/TweedentityStoreCaller')
 
 function now() {
   console.log(parseInt('' + Date.now() / 1000, 10), 'now')
 }
 
-contract('Store', accounts => {
+contract('TweedentityStore', accounts => {
 
   let store
   let storeCaller
@@ -34,8 +34,8 @@ contract('Store', accounts => {
   }
 
   before(async () => {
-    store = await Store.new()
-    storeCaller = await StoreCaller.new()
+    store = await TweedentityStore.new()
+    storeCaller = await TweedentityStoreCaller.new()
     storeCaller.setStore(store.address)
   })
 

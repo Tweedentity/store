@@ -4,18 +4,18 @@ pragma solidity ^0.4.18;
 import '../ethereum-api/oraclizeAPI.sol';
 import 'zeppelin-solidity/contracts/ownership/Ownable.sol';
 
-import './Store.sol';
+import './TweedentityStore.sol';
 
 
-contract Manager is usingOraclize, Ownable {
+contract TweedentityManager is usingOraclize, Ownable {
 
-  event ownershipConfirmed(address addr, string uid);
+  event OwnershipConfirmed(address addr, string uid);
 
   uint public version = 1;
 
   string public result;
 
-  Store public store;
+  TweedentityStore public store;
   bool public storeSet;
 
   mapping(bytes32 => address) internal __tempData;
@@ -26,9 +26,10 @@ contract Manager is usingOraclize, Ownable {
   }
 
   function setStore(address _address) onlyOwner public {
+    require(!storeSet);
     require(_address != 0x0);
-    store = Store(_address);
-    require(store.amIAuthorized());
+    store = TweedentityStore(_address);
+    require(store.authorized(this) == store.managerLevel());
     storeSet = true;
   }
 
@@ -52,7 +53,7 @@ contract Manager is usingOraclize, Ownable {
     address sender = __tempData[_oraclizeID];
 
     store.setIdentity(sender, _result);
-    ownershipConfirmed(sender, _result);
+    OwnershipConfirmed(sender, _result);
   }
 
   function addressToString(address x) internal pure returns (string) {
@@ -70,16 +71,6 @@ contract Manager is usingOraclize, Ownable {
   function char(byte b) internal pure returns (byte c) {
     if (b < 10) return byte(uint8(b) + 0x30);
     else return byte(uint8(b) + 0x57);
-  }
-
-  function isUid(string _uid) internal pure returns (bool) {
-    bytes memory uid = bytes(_uid);
-    for (uint i = 0; i < uid.length; i++) {
-      if (uid[i] < 48 || uid[i] > 57) {
-        return false;
-      }
-    }
-    return true;
   }
 
 }

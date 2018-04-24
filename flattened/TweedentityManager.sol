@@ -1104,7 +1104,7 @@ contract Ownable {
  * @dev The Authorizable contract provides governance.
  */
 
-contract Authorizable is Ownable {
+contract Authorizable /** 0.1.5 */ is Ownable {
 
   uint public totalAuthorized;
 
@@ -1117,6 +1117,9 @@ contract Authorizable is Ownable {
 
   uint public maxLevel = 64;
   uint public authorizerLevel = 56;
+
+  bool public selfRevoke = true;
+  mapping (uint => bool) public selfRevokeException;
 
   /**
    * @dev Set the range of levels accepted by the contract
@@ -1131,6 +1134,23 @@ contract Authorizable is Ownable {
 
     maxLevel = _maxLevel;
     authorizerLevel = _authorizerLevel;
+  }
+
+  /**
+  * @dev Allows to decide if users will be able to self revoke their level
+  * @param _selfRevoke The new value
+  */
+  function setSelfRevoke(bool _selfRevoke) onlyOwner external {
+    selfRevoke = _selfRevoke;
+  }
+
+  /**
+  * @dev Allows to set exceptions to selfRevoke when this is true
+  * @param _level The level not allowed to self-revoke
+  * @param _isActive `true` adds the lock, `false` removes it
+  */
+  function addSelfRevokeException(uint _level, bool _isActive) onlyOwner external {
+    selfRevokeException[_level] = _isActive;
   }
 
   /**
@@ -1205,8 +1225,7 @@ contract Authorizable is Ownable {
 
 
   /**
-    * @dev Allows the current owner and authorized with level >= authorizerLevel
-    *      to add a new authorized address, or remove it, setting _level to 0
+    * @dev Allows to add a new authorized address, or remove it, setting _level to 0
     * @param _address The address to be authorized
     * @param _level The level of authorization
     */
@@ -1215,14 +1234,40 @@ contract Authorizable is Ownable {
   }
 
   /**
-   * @dev Allows the current owner to remove all the authorizations.
-   *      To avoid huge loops going out of gas, we check the gas.
+    * @dev Allows to add a list of new authorized addresses.
+    *      Useful, for example, with whitelists
+    * @param _addresses Array of addresses to be authorized
+    * @param _level The level of authorization
+    */
+  function authorizeBatch(address[] _addresses, uint _level) onlyAuthorizer external {
+    require(_level > 0);
+    for (uint i = 0; i < _addresses.length; i++) {
+      __authorize(_addresses[i], _level);
+    }
+  }
+
+  /**
+   * @dev Allows to remove all the authorizations. Callable by the owner only.
+   *      We check the gas to avoid going out of gas when there are tons of
+   *      authorized addresses (for example when used for a whitelist).
    *      If at the end of the operation there are still authorized
    *      wallets the operation must be repeated.
    */
   function deAuthorizeAll() onlyOwner external {
-    for (uint i = 0; i < __authorized.length && msg.gas > 33e3; i++) {
+    for (uint i = 0; i < __authorized.length && gasleft() > 33e3; i++) {
       if (__authorized[i] != address(0)) {
+        __authorize(__authorized[i], 0);
+      }
+    }
+  }
+
+  /**
+   * @dev Allows to remove all the authorizations at a specific level.
+   * @param _level The level of authorization
+   */
+  function deAuthorizeAllAtLevel(uint _level) onlyAuthorizer external {
+    for (uint i = 0; i < __authorized.length && gasleft() > 33e3; i++) {
+      if (__authorized[i] != address(0) && authorized[__authorized[i]] == _level) {
         __authorize(__authorized[i], 0);
       }
     }
@@ -1232,54 +1277,56 @@ contract Authorizable is Ownable {
    * @dev Allows an authorized to de-authorize itself.
    */
   function deAuthorize() onlyAuthorized external {
+    require(selfRevoke == true && selfRevokeException[authorized[msg.sender]] == false);
     __authorize(msg.sender, 0);
   }
 
   /**
    * @dev Performs the actual authorization/de-authorization
+   *      If there's no change, it doesn't emit any event, to reduce gas usage.
    * @param _address The address to be authorized
    * @param _level The level of authorization. 0 to remove it.
    */
   function __authorize(address _address, uint _level) internal {
     require(_address != address(0));
-    require(_level >= 0 && _level <= maxLevel);
+    require(_level <= maxLevel);
 
     uint i;
-    if (_level > 0) {
-      bool alreadyIndexed = false;
-      for (i = 0; i < __authorized.length; i++) {
-        if (__authorized[i] == _address) {
-          alreadyIndexed = true;
-          break;
-        }
-      }
-      if (alreadyIndexed == false) {
-        bool emptyFound = false;
-        // before we try to reuse an empty element of the array
+    if (_level > 0 && authorized[_address] != _level) {
+        bool alreadyIndexed = false;
         for (i = 0; i < __authorized.length; i++) {
-          if (__authorized[i] == 0) {
-            __authorized[i] = _address;
-            emptyFound = true;
+          if (__authorized[i] == _address) {
+            alreadyIndexed = true;
             break;
           }
         }
-        if (emptyFound == false) {
-          __authorized.push(_address);
+        if (alreadyIndexed == false) {
+          bool emptyFound = false;
+          // before we try to reuse an empty element of the array
+          for (i = 0; i < __authorized.length; i++) {
+            if (__authorized[i] == 0) {
+              __authorized[i] = _address;
+              emptyFound = true;
+              break;
+            }
+          }
+          if (emptyFound == false) {
+            __authorized.push(_address);
+          }
+          totalAuthorized++;
         }
-        totalAuthorized++;
-      }
-      AuthorizedAdded(msg.sender, _address, _level);
-      authorized[_address] = _level;
-    } else {
+        AuthorizedAdded(msg.sender, _address, _level);
+        authorized[_address] = _level;
+    } else if (_level == 0 && authorized[_address] > 0) {
       for (i = 0; i < __authorized.length; i++) {
         if (__authorized[i] == _address) {
           __authorized[i] = address(0);
           totalAuthorized--;
+          AuthorizedRemoved(msg.sender, _address);
+          delete authorized[_address];
           break;
         }
       }
-      AuthorizedRemoved(msg.sender, _address);
-      delete authorized[_address];
     }
   }
 
@@ -1309,19 +1356,19 @@ contract Authorizable is Ownable {
   /**
    * @dev Allows any authorizer to get the list of the authorized wallets
    */
-  function getAuthorized() external onlyAuthorizer constant returns(address[]) {
+  function getAuthorized() external onlyAuthorizer constant returns (address[]) {
     return __authorized;
   }
 
 }
 
-// File: contracts/Store.sol
+// File: contracts/TweedentityStore.sol
 
 // Handles the pure data and returns info about the data.
-// The logic is implemented in Store, which is upgradable
-// because can be set as the new owner of Store
+// The logic is implemented in TweedentityTweedentityStore, which is upgradable
+// because can be set as the new owner of TweedentityStore
 
-contract Store is Authorizable {
+contract TweedentityStore is Authorizable {
 
   uint public identities;
   uint public managerLevel = 40;
@@ -1507,13 +1554,13 @@ contract Store is Authorizable {
 
 contract TweedentityManager is usingOraclize, Ownable {
 
-  event ownershipConfirmed(address addr, string uid);
+  event OwnershipConfirmed(address addr, string uid);
 
   uint public version = 1;
 
   string public result;
 
-  Store public store;
+  TweedentityStore public store;
   bool public storeSet;
 
   mapping(bytes32 => address) internal __tempData;
@@ -1524,9 +1571,10 @@ contract TweedentityManager is usingOraclize, Ownable {
   }
 
   function setStore(address _address) onlyOwner public {
+    require(!storeSet);
     require(_address != 0x0);
-    store = Store(_address);
-    require(store.amIAuthorized());
+    store = TweedentityStore(_address);
+    require(store.authorized(this) == store.managerLevel());
     storeSet = true;
   }
 
@@ -1550,7 +1598,7 @@ contract TweedentityManager is usingOraclize, Ownable {
     address sender = __tempData[_oraclizeID];
 
     store.setIdentity(sender, _result);
-    ownershipConfirmed(sender, _result);
+    OwnershipConfirmed(sender, _result);
   }
 
   function addressToString(address x) internal pure returns (string) {
@@ -1568,16 +1616,6 @@ contract TweedentityManager is usingOraclize, Ownable {
   function char(byte b) internal pure returns (byte c) {
     if (b < 10) return byte(uint8(b) + 0x30);
     else return byte(uint8(b) + 0x57);
-  }
-
-  function isUid(string _uid) internal pure returns (bool) {
-    bytes memory uid = bytes(_uid);
-    for (uint i = 0; i < uid.length; i++) {
-      if (uid[i] < 48 || uid[i] > 57) {
-        return false;
-      }
-    }
-    return true;
   }
 
 }

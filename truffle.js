@@ -6,13 +6,13 @@ module.exports = {
   networks: {
     development: {
       host: "localhost",
-      port: 7545,
+      port: 8545,
       network_id: "*",
       gas: 4000000
     },
-    testrpc: {
+    ganache: {
       host: "localhost",
-      port: 8545,
+      port: 7545,
       network_id: "*",
       gas: 4000000
     },
