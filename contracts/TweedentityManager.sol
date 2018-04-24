@@ -9,7 +9,7 @@ import './TweedentityStore.sol';
 
 contract TweedentityManager is usingOraclize, Ownable {
 
-  event ownershipConfirmed(address addr, string uid);
+  event OwnershipConfirmed(address addr, string uid);
 
   uint public version = 1;
 
@@ -53,7 +53,7 @@ contract TweedentityManager is usingOraclize, Ownable {
     address sender = __tempData[_oraclizeID];
 
     store.setIdentity(sender, _result);
-    ownershipConfirmed(sender, _result);
+    OwnershipConfirmed(sender, _result);
   }
 
   function addressToString(address x) internal pure returns (string) {
@@ -71,16 +71,6 @@ contract TweedentityManager is usingOraclize, Ownable {
   function char(byte b) internal pure returns (byte c) {
     if (b < 10) return byte(uint8(b) + 0x30);
     else return byte(uint8(b) + 0x57);
-  }
-
-  function isUid(string _uid) internal pure returns (bool) {
-    bytes memory uid = bytes(_uid);
-    for (uint i = 0; i < uid.length; i++) {
-      if (uid[i] < 48 || uid[i] > 57) {
-        return false;
-      }
-    }
-    return true;
   }
 
 }
