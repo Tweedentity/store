@@ -4,7 +4,7 @@
   "description": "tweedentity",
   "dependencies": {},
   "devDependencies": {
-    "authorizable": "^0.1.5",
+    "authorizable": "^0.1.6",
     "lodash": "^4.17.4",
     "sleep": "^5.1.1",
     "truffle-flattener": "^1.2.5",

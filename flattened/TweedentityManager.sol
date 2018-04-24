@@ -1104,7 +1104,7 @@ contract Ownable {
  * @dev The Authorizable contract provides governance.
  */
 
-contract Authorizable /** 0.1.5 */ is Ownable {
+contract Authorizable /** 0.1.6 */ is Ownable {
 
   uint public totalAuthorized;
 
@@ -1254,7 +1254,7 @@ contract Authorizable /** 0.1.5 */ is Ownable {
    *      wallets the operation must be repeated.
    */
   function deAuthorizeAll() onlyOwner external {
-    for (uint i = 0; i < __authorized.length && gasleft() > 33e3; i++) {
+    for (uint i = 0; i < __authorized.length && msg.gas > 33e3; i++) {
       if (__authorized[i] != address(0)) {
         __authorize(__authorized[i], 0);
       }
@@ -1266,7 +1266,7 @@ contract Authorizable /** 0.1.5 */ is Ownable {
    * @param _level The level of authorization
    */
   function deAuthorizeAllAtLevel(uint _level) onlyAuthorizer external {
-    for (uint i = 0; i < __authorized.length && gasleft() > 33e3; i++) {
+    for (uint i = 0; i < __authorized.length && msg.gas > 33e3; i++) {
       if (__authorized[i] != address(0) && authorized[__authorized[i]] == _level) {
         __authorize(__authorized[i], 0);
       }
