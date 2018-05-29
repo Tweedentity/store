@@ -27,16 +27,27 @@ contract('TweedentityStore', accounts => {
   let id2 = '23456'
   let id3 = '34567'
 
+  let managerLevel
+  let customerServiceLevel
+  let devLevel
+
   async function wait() {
     console.log(`Sleep 1 second`)
     sleep.sleep(1)
     await store.incCounter()
   }
 
+  async function getValue(what) {
+    return (await store[what]()).valueOf()
+  }
+
   before(async () => {
     store = await TweedentityStore.new()
     storeCaller = await TweedentityStoreCaller.new()
     storeCaller.setStore(store.address)
+    managerLevel = (await store.managerLevel()).valueOf()
+    customerServiceLevel = (await store.customerServiceLevel()).valueOf()
+    devLevel = (await store.devLevel()).valueOf()
   })
 
   it('should be empty', async () => {
@@ -48,19 +59,19 @@ contract('TweedentityStore', accounts => {
   })
 
   it('should authorize manager to handle the data', async () => {
-    await store.authorize(manager, 40)
+    await store.authorize(manager, managerLevel)
     assert.isTrue(await store.amIAuthorized({from: manager}))
-    assert.equal(await store.authorized(manager), 40)
+    assert.equal(await store.authorized(manager), managerLevel)
   })
 
   it('should authorize customerService to do customer service', async () => {
-    await store.authorize(customerService, 30)
-    assert.equal(await store.authorized(customerService), 30)
+    await store.authorize(customerService, customerServiceLevel)
+    assert.equal(await store.authorized(customerService), customerServiceLevel)
   })
 
   it('should authorize developer to change params', async () => {
-    await store.authorize(developer, 20)
-    assert.equal(await store.authorized(developer), 20)
+    await store.authorize(developer, devLevel)
+    assert.equal(await store.authorized(developer), devLevel)
   })
 
   it('should add a new identity with uid id1 for rita', async () => {
@@ -72,7 +83,6 @@ contract('TweedentityStore', accounts => {
     assert.isTrue(await store.isAddressSet(rita))
     assert.equal(await store.identities(), 1)
   })
-
 
   it('should show that minimumTimeBeforeUpdate is 1 days', async () => {
     assert.equal(await store.minimumTimeBeforeUpdate(), 86400)
@@ -172,6 +182,5 @@ contract('TweedentityStore', accounts => {
     assert.equal(await store.getUid(bob), '')
     assert.equal(await store.getAddress(id1), 0)
   })
-
 
 })

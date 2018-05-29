@@ -97,5 +97,4 @@ contract('TweedentityManager', accounts => {
   })
 
 
-
 })
