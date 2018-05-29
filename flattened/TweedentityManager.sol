@@ -1371,6 +1371,7 @@ contract Authorizable /** 0.1.6 */ is Ownable {
 contract TweedentityStore is Authorizable {
 
   uint public identities;
+
   uint public managerLevel = 40;
   uint public customerServiceLevel = 30;
   uint public devLevel = 20;
@@ -1436,7 +1437,7 @@ contract TweedentityStore is Authorizable {
 
   // primary methods
 
-  function setIdentity(address _address, string _uid) public onlyAuthorizedAtLevel(managerLevel) {
+  function setIdentity(address _address, string _uid) external onlyAuthorizedAtLevel(managerLevel) {
     require(_address != address(0));
     require(__isUid(_uid));
     require(isUpgradable(_address, _uid));
@@ -1455,11 +1456,11 @@ contract TweedentityStore is Authorizable {
     TweedentityAdded(_address, _uid);
   }
 
-  function removeIdentity(address _address) public onlyAuthorizedAtLevel(customerServiceLevel) {
+  function removeIdentity(address _address) external onlyAuthorizedAtLevel(customerServiceLevel) {
     __removeIdentity(_address);
   }
 
-  function removeMyIdentity() public {
+  function removeMyIdentity() external {
     __removeIdentity(msg.sender);
   }
 
@@ -1477,30 +1478,30 @@ contract TweedentityStore is Authorizable {
 
   // Changes the minimum time required before being allowed to update
   // a tweedentity associating a new address to a screenName
-  function changeMinimumTimeBeforeUpdate(uint _newMinimumTime) onlyAuthorizedAtLevel(devLevel) public {
+  function changeMinimumTimeBeforeUpdate(uint _newMinimumTime) onlyAuthorizedAtLevel(devLevel) external {
     minimumTimeBeforeUpdate = _newMinimumTime;
     MinimumTimeBeforeUpdateChanged(_newMinimumTime);
   }
 
   // getters
 
-  function getUid(address _address) public constant returns (string){
+  function getUid(address _address) external constant returns (string){
     return __uidByAddress[_address].lastUid;
   }
 
-  function getUidAsInteger(address _address) public constant returns (uint){
+  function getUidAsInteger(address _address) external constant returns (uint){
     return __stringToUint(__uidByAddress[_address].lastUid);
   }
 
-  function getAddress(string _uid) public constant returns (address){
+  function getAddress(string _uid) external constant returns (address){
     return __addressByUid[_uid].lastAddress;
   }
 
-  function getAddressLastUpdate(address _address) public constant returns (uint) {
+  function getAddressLastUpdate(address _address) external constant returns (uint) {
     return __uidByAddress[_address].lastUpdate;
   }
 
-  function getUidLastUpdate(string _uid) public constant returns (uint) {
+  function getUidLastUpdate(string _uid) external constant returns (uint) {
     return __addressByUid[_uid].lastUpdate;
   }
 
@@ -1537,15 +1538,6 @@ contract TweedentityStore is Authorizable {
     for (uint i = 0; i < 32; i++) {
       b[i] = byte(uint8(x / (2 ** (8 * (31 - i)))));
     }
-  }
-
-  function __bytesToBytes32(bytes b, uint offset) internal pure returns (bytes32) {
-    bytes32 out;
-
-    for (uint i = 0; i < 32; i++) {
-      out |= bytes32(b[offset + i] & 0xFF) >> (i * 8);
-    }
-    return out;
   }
 
 }
