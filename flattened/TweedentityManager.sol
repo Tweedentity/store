@@ -1546,11 +1546,11 @@ contract TweedentityStore is Authorizable {
 
 contract TweedentityManager is usingOraclize, Ownable {
 
+  event StartVerification(address addr, string uid);
   event OwnershipConfirmed(address addr, string uid);
+  event VerificatioFailed(address addr);
 
   uint public version = 1;
-
-  string public result;
 
   TweedentityStore public store;
   bool public storeSet;
@@ -1573,6 +1573,7 @@ contract TweedentityManager is usingOraclize, Ownable {
   // Verifies that the signature published on twitter is correct
   function verifyTwitterAccountOwnership(string _id, uint _gasPrice, uint _gasLimit) public isStoreSet payable {
     require(bytes(_id).length >= 18);
+    require(msg.value == _gasPrice * _gasLimit);
 
     oraclize_setCustomGasPrice(_gasPrice);
 
@@ -1590,7 +1591,11 @@ contract TweedentityManager is usingOraclize, Ownable {
     address sender = __tempData[_oraclizeID];
 
     store.setIdentity(sender, _result);
-    OwnershipConfirmed(sender, _result);
+    if (store.isAddressSet(sender)) {
+      OwnershipConfirmed(sender, _result);
+    } else {
+      VerificatioFailed(sender);
+    }
   }
 
   function addressToString(address x) internal pure returns (string) {
