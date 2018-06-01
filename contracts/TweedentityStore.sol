@@ -1,24 +1,13 @@
 pragma solidity ^0.4.18;
 
 
-import 'authorizable/contracts/Authorizable.sol';
+import 'zeppelin-solidity/contracts/ownership/Ownable.sol';
 
+contract TweedentityStore is Ownable {
 
-// Handles the pure data and returns info about the data.
-// The logic is implemented in TweedentityTweedentityStore, which is upgradable
-// because can be set as the new owner of TweedentityStore
-
-contract TweedentityStore is Authorizable {
+  bytes32 public contractName = keccak256("TweedentityStore");
 
   uint public identities;
-
-  uint public managerLevel = 40;
-  uint public customerServiceLevel = 30;
-  uint public devLevel = 20;
-
-  bool public isDatabase = true;
-
-  uint public minimumTimeBeforeUpdate = 1 days;
 
   struct Uid {
     string lastUid;
@@ -30,11 +19,17 @@ contract TweedentityStore is Authorizable {
     uint lastUpdate;
   }
 
-  // mappings
+  address public manager;
 
-  mapping(string => Address) internal __addressByUid;
+  modifier onlyManager() {
+    require(msg.sender == manager);
+    _;
+  }
 
-  mapping(address => Uid) internal __uidByAddress;
+  function setManager(address _address) onlyOwner external {
+    require(_address != address(0));
+    manager = _address;
+  }
 
   // events
 
@@ -42,7 +37,12 @@ contract TweedentityStore is Authorizable {
 
   event TweedentityRemoved(address indexed _address, string _uid);
 
-  event MinimumTimeBeforeUpdateChanged(uint _time);
+
+  // mappings
+
+  mapping(string => Address) internal __addressByUid;
+
+  mapping(address => Uid) internal __uidByAddress;
 
   // helpers
 
@@ -54,21 +54,13 @@ contract TweedentityStore is Authorizable {
     return bytes(__uidByAddress[_address].lastUid).length > 0;
   }
 
-  function isUidUpgradable(string _uid) public constant returns (bool) {
-    return __addressByUid[_uid].lastUpdate == 0 || now >= __addressByUid[_uid].lastUpdate + minimumTimeBeforeUpdate;
-  }
-
-  function isAddressUpgradable(address _address) public constant returns (bool) {
-    return __uidByAddress[_address].lastUpdate == 0 || now >= __uidByAddress[_address].lastUpdate + minimumTimeBeforeUpdate;
-  }
-
   function isUpgradable(address _address, string _uid) public constant returns (bool) {
     if (isAddressSet(_address)) {
-      if (keccak256(__uidByAddress[_address].lastUid) == keccak256(_uid) // the couple is unchanged
-      || !isAddressUpgradable(_address) || !isUidUpgradable(_uid)) {
+      if (keccak256(getUid(_address)) == keccak256(_uid)) {
         return false;
       }
-    } else if (isUidSet(_uid)) {
+    }
+    else if (isUidSet(_uid)) {
       // last address associated with _uid must remove the identity before associating _uid with _address
       return false;
     }
@@ -77,7 +69,7 @@ contract TweedentityStore is Authorizable {
 
   // primary methods
 
-  function setIdentity(address _address, string _uid) external onlyAuthorizedAtLevel(managerLevel) {
+  function setIdentity(address _address, string _uid) external onlyManager {
     require(_address != address(0));
     require(__isUid(_uid));
     require(isUpgradable(_address, _uid));
@@ -92,11 +84,10 @@ contract TweedentityStore is Authorizable {
     __uidByAddress[_address] = Uid(_uid, now);
     __addressByUid[_uid] = Address(_address, now);
     identities++;
-
     TweedentityAdded(_address, _uid);
   }
 
-  function removeIdentity(address _address) external onlyAuthorizedAtLevel(customerServiceLevel) {
+  function removeIdentity(address _address) external onlyManager {
     __removeIdentity(_address);
   }
 
@@ -112,20 +103,12 @@ contract TweedentityStore is Authorizable {
     __uidByAddress[_address] = Uid('', __uidByAddress[_address].lastUpdate);
     __addressByUid[uid] = Address(address(0), __addressByUid[uid].lastUpdate);
     identities--;
-
     TweedentityRemoved(_address, uid);
-  }
-
-  // Changes the minimum time required before being allowed to update
-  // a tweedentity associating a new address to a screenName
-  function changeMinimumTimeBeforeUpdate(uint _newMinimumTime) onlyAuthorizedAtLevel(devLevel) external {
-    minimumTimeBeforeUpdate = _newMinimumTime;
-    MinimumTimeBeforeUpdateChanged(_newMinimumTime);
   }
 
   // getters
 
-  function getUid(address _address) external constant returns (string){
+  function getUid(address _address) public constant returns (string){
     return __uidByAddress[_address].lastUid;
   }
 

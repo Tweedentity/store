@@ -1,17 +1,15 @@
-const _ = require('lodash')
+// const _ = require('lodash')
 
 module.exports = (contract, filter) => {
   return new Promise((resolve, reject) => {
-    const event = contract[filter.event]()
-    event.watch()
-    event.get((error, logs) => {
-      const log = _.filter(logs, filter)
-      if (log) {
-        resolve(log)
+    const event = contract[filter.event](filter.args, {fromBlock: filter.fromBlock || 0, toBlock: filter.toBlock || 'latest'})
+    event.watch((error, result) => {
+      if (result) {
+        resolve(result)
       } else {
-        throw Error('Failed to find filtered event for ' + filter.event)
+        reject('Failed to find events for ' + event)
       }
+      event.stopWatching()
     })
-    event.stopWatching()
   })
 }

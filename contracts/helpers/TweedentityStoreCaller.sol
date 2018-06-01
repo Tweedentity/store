@@ -28,18 +28,6 @@ contract TweedentityStoreCaller {
     return store.isAddressSet(_address);
   }
 
-  function isUidUpgradable(string _uid) public constant returns (bool) {
-    return store.isUidUpgradable(_uid);
-  }
-
-  function isAddressUpgradable(address _address) public constant returns (bool) {
-    return store.isAddressUpgradable(_address);
-  }
-
-  function isUpgradable(address _address, string _uid) public constant returns (bool) {
-    return store.isUpgradable(_address, _uid);
-  }
-
   function getUidAsInteger(address _address) public constant returns (uint){
     return store.getUidAsInteger(_address);
   }
@@ -55,5 +43,10 @@ contract TweedentityStoreCaller {
   function getUidLastUpdate(string _uid) public constant returns (uint) {
     return store.getUidLastUpdate(_uid);
   }
+
+  function isUpgradable(address _address, string _uid) public constant returns (bool) {
+    return store.isUpgradable(_address, _uid);
+  }
+
 
 }
