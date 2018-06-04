@@ -1,10 +1,12 @@
 const assertRevert = require('./helpers/assertRevert')
 const logEvent = require('./helpers/logEvent')
-const sleep = require('sleep')
 
 const TweedentityStore = artifacts.require('./TweedentityStore.sol')
 const TweedentityManager = artifacts.require('./TweedentityManager.sol')
 const TweedentityVerifier = artifacts.require('./TweedentityVerifier.sol')
+
+const Wait = require('./helpers/wait')
+const Counter = artifacts.require('./helpers/Counter')
 
 const fixtures = require('./fixtures')
 const tweet = fixtures.tweets[0]
@@ -23,6 +25,8 @@ contract('TweedentityVerifier', accounts => {
   let store
   let verifier
 
+  let wait
+
   before(async () => {
     store = await TweedentityStore.new()
     manager = await TweedentityManager.new()
@@ -30,6 +34,8 @@ contract('TweedentityVerifier', accounts => {
 
     store.setManager(manager.address)
     manager.setStore(store.address)
+
+    wait = (new Wait(await Counter.new())).wait
   })
 
   it('should authorize the manager to handle the store', async () => {
@@ -93,9 +99,9 @@ contract('TweedentityVerifier', accounts => {
 
     let ok = false
 
+    console.log('Waiting for result')
     for (let i = 0; i < 12; i++) {
-      console.log('Waiting for result')
-      sleep.sleep(1)
+      wait()
       let uid = await store.getUid(accounts[1])
       if (uid == tweet.userId) {
         ok = true

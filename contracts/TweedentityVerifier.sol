@@ -9,9 +9,11 @@ import './TweedentityManager.sol';
 
 contract TweedentityVerifier is usingOraclize, Ownable {
 
-  event StartVerification(address addr);
-  event OwnershipConfirmed(address addr, string uid);
+  event VerificationStarted(address addr);
   event VerificatioFailed(address addr);
+
+  string public apiUrl = "https://api.tweedentity.net/";
+
 
   uint public version = 1;
 
@@ -27,19 +29,25 @@ contract TweedentityVerifier is usingOraclize, Ownable {
     _;
   }
 
-  function setManager(address _address) onlyOwner public {
+  function setManager(address _address)
+  public
+  onlyOwner
+  {
     require(_address != 0x0);
     managerAddress = _address;
     manager = TweedentityManager(_address);
-    require(manager.contractName() == keccak256("TweedentityManager"));
   }
 
   // Verifies that the signature published on twitter is correct
-  function verifyTwitterAccountOwnership(string _id, uint _gasPrice, uint _gasLimit) public isManagerSet payable {
+  function verifyTwitterAccountOwnership(string _identifier, string _id, uint _gasPrice, uint _gasLimit)
+  public
+  isManagerSet
+  payable
+  {
     require(bytes(_id).length >= 18);
     require(msg.value == _gasPrice * _gasLimit);
 
-    StartVerification(msg.sender);
+    VerificationStarted(msg.sender);
     oraclize_setCustomGasPrice(_gasPrice);
 
     bytes32 oraclizeID = oraclize_query(
@@ -50,20 +58,22 @@ contract TweedentityVerifier is usingOraclize, Ownable {
     __tempData[oraclizeID] = msg.sender;
   }
 
-  function __callback(bytes32 _oraclizeID, string _result) public {
+  function __callback(bytes32 _oraclizeID, string _result)
+  public
+  {
     require(msg.sender == oraclize_cbAddress());
-
-    address sender = __tempData[_oraclizeID];
-
-    manager.setIdentity(sender, _result);
-    if (manager.isAddressSet(sender)) {
-      OwnershipConfirmed(sender, _result);
+    if (bytes(_result).length > 0) {
+      manager.setIdentity("twitter", __tempData[_oraclizeID], _result);
     } else {
-      VerificatioFailed(sender);
+      VerificatioFailed(__tempData[_oraclizeID]);
     }
   }
 
-  function addressToString(address x) internal pure returns (string) {
+  function addressToString(address x)
+  internal
+  pure
+  returns (string)
+  {
     bytes memory s = new bytes(40);
     for (uint i = 0; i < 20; i++) {
       byte b = byte(uint8(uint(x) / (2 ** (8 * (19 - i)))));
@@ -75,7 +85,11 @@ contract TweedentityVerifier is usingOraclize, Ownable {
     return string(s);
   }
 
-  function char(byte b) internal pure returns (byte c) {
+  function char(byte b)
+  internal
+  pure
+  returns (byte c)
+  {
     if (b < 10) return byte(uint8(b) + 0x30);
     else return byte(uint8(b) + 0x57);
   }

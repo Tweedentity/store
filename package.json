@@ -4,7 +4,7 @@
   "description": "tweedentity",
   "dependencies": {},
   "devDependencies": {
-    "authorizable": "^0.1.12",
+    "authorizable": "^0.1.13",
     "lodash": "^4.17.4",
     "openzeppelin-solidity": "^1.8.0",
     "sleep": "^5.1.1",
@@ -12,7 +12,8 @@
     "truffle-hdwallet-provider": "0.0.5"
   },
   "scripts": {
-    "testServer": "ganache-cli --mnemonic 'tweedentity' --v",
+    "ganache-cli": "ganache-cli --mnemonic 'tweedentity'",
+    "ganache-cli-verbose": "ganache-cli --mnemonic 'tweedentity' --v",
     "bridge": "cd ethereum-bridge && node bridge -H localhost:8545 -a 9 --dev",
     "test": "truffle test",
     "clear": "rm -rf build/contracts",

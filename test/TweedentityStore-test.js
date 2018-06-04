@@ -1,8 +1,13 @@
 const assertRevert = require('./helpers/assertRevert')
 const log = require('./helpers/log')
 
+const eventWatcher = require('./helpers/EventWatcher')
+
 const TweedentityStore = artifacts.require('./TweedentityStore.sol')
 const TweedentityStoreCaller = artifacts.require('./helpers/TweedentityStoreCaller')
+
+const Wait = require('./helpers/wait')
+const Counter = artifacts.require('./helpers/Counter')
 
 function now() {
   console.log(parseInt('' + Date.now() / 1000, 10), 'now')
@@ -25,11 +30,7 @@ contract('TweedentityStore', accounts => {
   let id2 = '23456'
   let id3 = '34567'
 
-  async function wait() {
-    console.log(`Sleep 1 second`)
-    sleep.sleep(1)
-    await store.incCounter()
-  }
+  let wait
 
   async function getValue(what) {
     return (await store[what]()).valueOf()
@@ -38,7 +39,8 @@ contract('TweedentityStore', accounts => {
   before(async () => {
     store = await TweedentityStore.new()
     storeCaller = await TweedentityStoreCaller.new()
-    storeCaller.setStore(store.address)
+    await storeCaller.setStore(store.address)
+    wait = (new Wait(await Counter.new())).wait
   })
 
   it('should be empty', async () => {
@@ -52,6 +54,15 @@ contract('TweedentityStore', accounts => {
   it('should authorize manager to handle the data', async () => {
     await store.setManager(manager)
     assert.equal(await store.manager(), manager)
+  })
+
+  it('should revert trying to add a new tweedentity because the store is not declared', async () => {
+    await assertRevert(store.setIdentity(rita, id1))
+  })
+
+  it('should declare the store', async () => {
+    await store.setApp('Twitter', 'twitter.com', 'twitter')
+    assert.equal(await store.getAppIdentifier(), web3.sha3('twitter'))
   })
 
   it('should add a new identity with uid id1 for rita', async () => {
@@ -72,8 +83,11 @@ contract('TweedentityStore', accounts => {
     await assertRevert(store.setIdentity(bob, id1, {from: manager}))
   })
 
-  it('should revert trying to associate again id1 to rita', async () => {
-    await assertRevert(store.setIdentity(rita, id1, {from: manager}))
+  it('should not revert trying to associate again id1 to rita', async () => {
+    const lastUpdate = await store.getAddressLastUpdate(rita)
+    wait()
+    await store.setIdentity(rita, id1, {from: manager})
+    assert.isTrue(await store.getAddressLastUpdate(rita) != lastUpdate)
   })
 
   it('should associate now rita with the uid id2 and reverse after 1 second', async () => {

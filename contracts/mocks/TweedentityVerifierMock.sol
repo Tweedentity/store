@@ -9,10 +9,8 @@ contract TweedentityVerifierMock is TweedentityVerifier {
   address public managerAddress;
 
   function setManager(address _address) onlyOwner public {
-    require(_address != 0x0);
+    super.setManager(_address);
     managerAddress = _address;
-    manager = TweedentityManager(_address);
-    require(manager.contractName() == keccak256("TweedentityManager"));
   }
 
 }

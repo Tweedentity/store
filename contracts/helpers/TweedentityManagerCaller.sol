@@ -1,6 +1,7 @@
 pragma solidity ^0.4.18;
 
 
+import '../TweedentityStore.sol';
 import '../TweedentityManager.sol';
 
 
@@ -18,19 +19,10 @@ contract TweedentityManagerCaller {
   // callable methods
   // Theoretically, there is no need to test them because the
   // compiler with produce an error when calling any getter that
-  // is return not-allowed dynamic data
+  // tries to return not-allowed dynamic data
 
-  function isUidUpgradable(string _uid) public constant returns (bool) {
-    return manager.isUidUpgradable(_uid);
+  function getUpgradability(string _identifier, address _addr, string _uid) public constant returns (uint) {
+    return manager.getUpgradability(_identifier, _addr, _uid);
   }
-
-  function isAddressUpgradable(address _address) public constant returns (bool) {
-    return manager.isAddressUpgradable(_address);
-  }
-
-  function isUpgradable(address _address, string _uid) public constant returns (bool) {
-    return manager.isUpgradable(_address, _uid);
-  }
-
 
 }

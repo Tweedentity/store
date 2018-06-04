@@ -5,8 +5,10 @@ module.exports = (...x) => {
       for (let j = 0; j < y.length; j++) {
         console.log(j, y[j].valueOf())
       }
+    } else if (typeof y === 'object') {
+      console.log(y.valueOf())
     } else {
-      console.log(x[i].valueOf())
+      console.log(y)
     }
   }
 }

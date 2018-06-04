@@ -8,5 +8,5 @@ contracts=(
 
 for c in "${contracts[@]}"
 do
-  truffle-flattener "contracts/$c.sol" > "flattened/$c.sol"
+  truffle-flattener "contracts/$c.sol" > "flattened/$c-flattened.sol"
 done
