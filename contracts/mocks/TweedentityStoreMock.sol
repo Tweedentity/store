@@ -6,15 +6,16 @@ import '../TweedentityStore.sol';
 
 contract TweedentityStoreMock is TweedentityStore {
 
-  function getNowPlus(string _uid) public constant returns (uint[3]) {
-    return [now, __addressByUid[_uid].lastUpdate, __addressByUid[_uid].lastUpdate + minimumTimeBeforeUpdate];
-  }
-
-  uint public counter;
-
-  function incCounter() public {
-    // we use this to mine a new block during tests
-    counter++;
+  function setApp(string _name, string _domain, string _nickname, uint _id)
+  external
+  onlyOwner
+  {
+    require(_id > 0);
+    require(!appSet);
+//    we are executing the store not from a contract
+//    require(manager.isSettable(_id, _nickname));
+    app = App(_name, _domain, _nickname, _id);
+    appSet = true;
   }
 
 }
