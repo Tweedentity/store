@@ -32,6 +32,9 @@ contract('TweedentityManager', accounts => {
   let id2 = '2'
   let id3 = '3'
 
+  let appNickname = 'twitter'
+  let appId = 1
+
   let verifierLevel
   let customerServiceLevel
   let devLevel
@@ -54,7 +57,7 @@ contract('TweedentityManager', accounts => {
     managerCaller = await TweedentityManagerCaller.new()
 
     await store.setManager(manager.address)
-    await store.setApp('Twitter', 'twitter.com', 'twitter')
+    await store.setApp('Twitter', 'twitter.com', appNickname, appId)
 
     await managerCaller.setManager(manager.address)
 
@@ -72,23 +75,23 @@ contract('TweedentityManager', accounts => {
   })
 
   it('should see that the store has not been set', async () => {
-    assert.isFalse(await manager.getStoreSet('twitter'))
+    assert.isFalse(await manager.getIsStoreSet(appNickname))
   })
 
   it('should set the store', async () => {
-    await manager.setAStore('twitter', store.address)
-    assert.isTrue(await manager.getStoreSet('twitter'))
-    assert.equal(await store.manager(), manager.address)
+    await manager.setAStore(appNickname, store.address)
+    assert.isTrue(await manager.getIsStoreSet(appNickname))
+    assert.equal(await store.managerAddress(), manager.address)
   })
 
   it('should revert trying to add a new tweedentity', async () => {
-    await assertRevert(manager.setIdentity('twitter', rita, id1))
+    await assertRevert(manager.setIdentity(appId, rita, id1))
   })
 
   it('should add a new identity with uid id1 for rita', async () => {
     assert.isFalse(await store.isUidSet(id1))
 
-    await manager.setIdentity('twitter', rita, id1, {
+    await manager.setIdentity(appId, rita, id1, {
       from: verifier
     })
     assert.equal(await store.getAddress(id1), rita)
@@ -102,7 +105,7 @@ contract('TweedentityManager', accounts => {
 
   it('should refuse trying to update rita with the uid id2', async () => {
 
-    manager.setIdentity('twitter', rita, id2, {
+    manager.setIdentity(appId, rita, id2, {
       from: verifier
     })
 
@@ -120,7 +123,7 @@ contract('TweedentityManager', accounts => {
 
   it('should revert trying to associate accounts[5] to uid id3 using a not authorized owner', async () => {
 
-    await assertRevert(manager.setIdentity('twitter', accounts[5], id3))
+    await assertRevert(manager.setIdentity(appId, accounts[5], id3))
 
   })
 
@@ -140,7 +143,7 @@ contract('TweedentityManager', accounts => {
 
     assert.equal(await store.getUid(rita), id1)
 
-    manager.setIdentity('twitter', bob, id1, {
+    manager.setIdentity(appId, bob, id1, {
       from: verifier
     })
 
@@ -158,7 +161,7 @@ contract('TweedentityManager', accounts => {
   })
 
   it('should associate again id1 to rita', async () => {
-    manager.setIdentity('twitter', rita, id1, {
+    manager.setIdentity(appId, rita, id1, {
       from: verifier
     })
 
@@ -175,21 +178,21 @@ contract('TweedentityManager', accounts => {
   })
 
   it('should check upgradabilities', async () => {
-    assert.equal(await manager.getUpgradability('twitter', rita, id2), addressNotUpgradable)
-    assert.equal(await manager.getUpgradability('twitter', alice, id2), upgradable)
-    assert.equal(await manager.getUpgradability('twitter', alice, id1), notUpgradableInStore)
-    assert.equal(await manager.getUpgradability('twitter', rita, id1), uidAndAddressNotUpgradable)
+    assert.equal(await manager.getUpgradability(appId, rita, id2), addressNotUpgradable)
+    assert.equal(await manager.getUpgradability(appId, alice, id2), upgradable)
+    assert.equal(await manager.getUpgradability(appId, alice, id1), notUpgradableInStore)
+    assert.equal(await manager.getUpgradability(appId, rita, id1), uidAndAddressNotUpgradable)
 
     await wait()
 
-    assert.equal(await manager.getUpgradability('twitter', rita, id2), upgradable)
+    assert.equal(await manager.getUpgradability(appId, rita, id2), upgradable)
   })
 
   it('should associate after a second rita with the uid id2', async () => {
 
     assert.equal(await store.getAddress(id2), 0)
 
-    await manager.setIdentity('twitter', rita, id2, {
+    await manager.setIdentity(appId, rita, id2, {
       from: verifier
     })
     assert.equal(await store.getUid(rita), id2)
@@ -200,7 +203,7 @@ contract('TweedentityManager', accounts => {
     await wait()
     // assert.isTrue(await manager.isUidUpgradable(store, id1))
 
-    await manager.setIdentity('twitter', rita, id1, {
+    await manager.setIdentity(appId, rita, id1, {
       from: verifier
     })
     // assert.isFalse(await manager.isUidUpgradable(store,id1))
@@ -208,7 +211,7 @@ contract('TweedentityManager', accounts => {
   })
 
   it('should associate id2 to alice', async () => {
-    await manager.setIdentity('twitter', alice, id2, {
+    await manager.setIdentity(appId, alice, id2, {
       from: verifier
     })
     assert.equal(await store.getUid(alice), id2)
@@ -223,7 +226,7 @@ contract('TweedentityManager', accounts => {
 
     assert.isTrue(await store.isAddressSet(rita))
 
-    await manager.removeIdentity('twitter', rita, {
+    await manager.removeIdentity(appId, rita, {
       from: customerService
     })
     assert.equal(await store.getUid(rita), '')
@@ -234,7 +237,7 @@ contract('TweedentityManager', accounts => {
 
     await wait()
 
-    await manager.setIdentity('twitter', bob, id1, {
+    await manager.setIdentity(appId, bob, id1, {
       from: verifier
     })
 
@@ -245,13 +248,13 @@ contract('TweedentityManager', accounts => {
 
   it('should verify that all the function callable from other contracts are actually callable', async () => {
 
-    assert.equal(await managerCaller.getUpgradability('twitter', bob, id1), uidAndAddressNotUpgradable)
-    assert.equal(await managerCaller.getUpgradability('twitter', bob, id2), notUpgradableInStore)
+    assert.equal(await managerCaller.getUpgradability(appId, bob, id1), uidAndAddressNotUpgradable)
+    assert.equal(await managerCaller.getUpgradability(appId, bob, id2), notUpgradableInStore)
   })
 
 
   it('should allow bob to remove their own identity', async () => {
-    await manager.removeMyIdentity('twitter', {
+    await manager.removeMyIdentity(appId, {
       from: bob
     })
     assert.equal(await store.getUid(bob), '')

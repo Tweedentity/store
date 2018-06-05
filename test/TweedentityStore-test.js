@@ -3,7 +3,7 @@ const log = require('./helpers/log')
 
 const eventWatcher = require('./helpers/EventWatcher')
 
-const TweedentityStore = artifacts.require('./TweedentityStore.sol')
+const TweedentityStore = artifacts.require('./mocks/TweedentityStoreMock.sol')
 const TweedentityStoreCaller = artifacts.require('./helpers/TweedentityStoreCaller')
 
 const Wait = require('./helpers/wait')
@@ -53,7 +53,7 @@ contract('TweedentityStore', accounts => {
 
   it('should authorize manager to handle the data', async () => {
     await store.setManager(manager)
-    assert.equal(await store.manager(), manager)
+    assert.equal(await store.managerAddress(), manager)
   })
 
   it('should revert trying to add a new tweedentity because the store is not declared', async () => {
@@ -61,8 +61,9 @@ contract('TweedentityStore', accounts => {
   })
 
   it('should declare the store', async () => {
-    await store.setApp('Twitter', 'twitter.com', 'twitter')
-    assert.equal(await store.getAppIdentifier(), web3.sha3('twitter'))
+    await store.setApp('Twitter', 'twitter.com', 'twitter', 1)
+    assert.equal(await store.getAppNickname(), web3.sha3('twitter'))
+    assert.equal(await store.getAppId(), 1)
   })
 
   it('should add a new identity with uid id1 for rita', async () => {

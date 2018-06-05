@@ -21,8 +21,8 @@ contract TweedentityManagerCaller {
   // compiler with produce an error when calling any getter that
   // tries to return not-allowed dynamic data
 
-  function getUpgradability(string _identifier, address _addr, string _uid) public constant returns (uint) {
-    return manager.getUpgradability(_identifier, _addr, _uid);
+  function getUpgradability(uint _id, address _addr, string _uid) public constant returns (uint) {
+    return manager.getUpgradability(_id, _addr, _uid);
   }
 
 }

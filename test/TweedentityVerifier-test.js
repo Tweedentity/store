@@ -1,5 +1,5 @@
 const assertRevert = require('./helpers/assertRevert')
-const logEvent = require('./helpers/logEvent')
+const eventWatcher = require('./helpers/EventWatcher')
 
 const TweedentityStore = artifacts.require('./TweedentityStore.sol')
 const TweedentityManager = artifacts.require('./TweedentityManager.sol')
@@ -11,6 +11,7 @@ const Counter = artifacts.require('./helpers/Counter')
 const fixtures = require('./fixtures')
 const tweet = fixtures.tweets[0]
 
+const log = require('./helpers/log')
 
 function logValue(...x) {
   for (let i = 0; i < x.length; i++) {
@@ -27,13 +28,17 @@ contract('TweedentityVerifier', accounts => {
 
   let wait
 
+  let appNickname = 'twitter'
+  let appId = 1
+
   before(async () => {
     store = await TweedentityStore.new()
     manager = await TweedentityManager.new()
     verifier = await TweedentityVerifier.new()
 
-    store.setManager(manager.address)
-    manager.setStore(store.address)
+    await store.setManager(manager.address)
+    await store.setApp('Twitter', 'twitter.com', appNickname, appId)
+    await manager.setAStore(appNickname, store.address)
 
     wait = (new Wait(await Counter.new())).wait
   })
@@ -47,18 +52,19 @@ contract('TweedentityVerifier', accounts => {
   it('should revert trying to verify an account before setting the store', async () => {
 
     const gasPrice = 1e9
-    const gasLimit = 16e4
+    const gasLimit = 30e4
 
     await assertRevert(
-        verifier.verifyTwitterAccountOwnership(
-            tweet.id,
-            gasPrice,
-            16e4,
-            {
-              from: accounts[1],
-              value: gasPrice * gasLimit,
-              gas: 300000 // 171897 on Ropsten
-            }))
+      verifier.verifyAccountOwnership(
+        appNickname,
+        tweet.id,
+        gasPrice,
+        16e4,
+        {
+          from: accounts[1],
+          value: gasPrice * gasLimit,
+          gas: 40e4
+        }))
 
   })
 
@@ -68,25 +74,39 @@ contract('TweedentityVerifier', accounts => {
   })
 
   it('should revert if the tweet id is empty', async () => {
-    await assertRevert(verifier.verifyTwitterAccountOwnership('', 21e9, 16e4))
+
+    const gasPrice = 4e9
+    const gasLimit = 20e4
+
+    await assertRevert(verifier.verifyAccountOwnership(
+      appNickname,
+      '',
+      21e9,
+      16e4,
+      {
+        from: accounts[1],
+        value: gasPrice * gasLimit,
+        gas: 300e3
+      }))
   })
 
   it('should call Oraclize, recover the signature from the tweet and verify that it is correct', async () => {
 
     const gasPrice = 4e9
-    const gasLimit = 17e4
+    const gasLimit = 18e4
 
-    await verifier.verifyTwitterAccountOwnership(
-        tweet.id,
-        gasPrice,
-        gasLimit,
-        {
-          from: accounts[1],
-          value: gasPrice * gasLimit,
-          gas: 232e3
-        })
+    await verifier.verifyAccountOwnership(
+      appNickname,
+      tweet.id,
+      gasPrice,
+      gasLimit,
+      {
+        from: accounts[1],
+        value: gasPrice * gasLimit,
+        gas: 270e3
+      })
 
-    // const result = await logEvent(verifier, {
+    // const result = await eventWatcher.watch(verifier, {
     //   event: 'OwnershipConfirmed',
     //   args: {
     //     addr: accounts[1]
@@ -110,6 +130,9 @@ contract('TweedentityVerifier', accounts => {
     }
 
     assert.isTrue(ok)
+
+    // waits before executing more test, to avoid crashing ganache-cli
+    wait(2)
 
   })
 

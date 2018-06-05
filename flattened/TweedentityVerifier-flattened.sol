@@ -32,7 +32,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-//pragma solidity >=0.4.1 <=0.4.20;// Incompatible compiler version... please select one stated within pragma solidity or use different oraclizeAPI version
+pragma solidity >=0.4.1 <=0.4.20;// Incompatible compiler version... please select one stated within pragma solidity or use different oraclizeAPI version
 
 contract OraclizeI {
     address public cbAddress;
@@ -1231,6 +1231,18 @@ contract usingOraclize {
 }
 // </ORACLIZE_API>
 
+// File: contracts/TweedentityManagerInterfaceCompact.sol
+
+contract TweedentityManagerInterfaceCompact {
+
+  function isSettable(uint _id, string _nickname)
+  external
+  constant
+  returns (bool)
+  {}
+
+}
+
 // File: openzeppelin-solidity/contracts/ownership/Ownable.sol
 
 /**
@@ -1277,9 +1289,9 @@ contract Ownable {
 
 contract TweedentityStore is Ownable {
 
-  bytes32 public contractName = keccak256("TweedentityStore");
-
   uint public identities;
+
+  TweedentityManagerInterfaceCompact private manager;
 
   struct Uid {
     string lastUid;
@@ -1291,23 +1303,83 @@ contract TweedentityStore is Ownable {
     uint lastUpdate;
   }
 
-  address public manager;
+  address public managerAddress;
 
   modifier onlyManager() {
-    require(msg.sender == manager);
+    require(msg.sender == managerAddress);
     _;
   }
 
-  function setManager(address _address) onlyOwner external {
+  function setManager(
+    address _address
+  )
+  external
+  onlyOwner
+  {
     require(_address != address(0));
-    manager = _address;
+    managerAddress = _address;
+    manager = TweedentityManagerInterfaceCompact(_address);
+  }
+
+  // declaring app
+  // example: (Twitter, twitter.com, twitter)
+
+  struct App {
+    string name;
+    string domain;
+    string nickname;
+    uint id;
+  }
+
+  App public app;
+  bool public appSet;
+
+  modifier isAppSet() {
+    require(appSet);
+    _;
+  }
+
+  function setApp(
+    string _name,
+    string _domain,
+    string _nickname,
+    uint _id
+  )
+  external
+  onlyOwner
+  {
+    require(_id > 0);
+    require(!appSet);
+    require(manager.isSettable(_id, _nickname));
+    app = App(_name, _domain, _nickname, _id);
+    appSet = true;
+  }
+
+  function getAppNickname()
+  external
+  isAppSet
+  constant returns (bytes32) {
+    return keccak256(app.nickname);
+  }
+
+  function getAppId()
+  external
+  isAppSet
+  constant returns (uint) {
+    return app.id;
   }
 
   // events
 
-  event TweedentityAdded(address indexed _address, string _uid);
+  event IdentitySet(
+    address addr,
+    string uid
+  );
 
-  event TweedentityRemoved(address indexed _address, string _uid);
+  event IdentityRemoved(
+    address addr,
+    string uid
+  );
 
 
   // mappings
@@ -1318,37 +1390,54 @@ contract TweedentityStore is Ownable {
 
   // helpers
 
-  function isUidSet(string _uid) public constant returns (bool){
+  function isUidSet(
+    string _uid
+  )
+  public
+  constant returns (bool)
+  {
     return __addressByUid[_uid].lastAddress != address(0);
   }
 
-  function isAddressSet(address _address) public constant returns (bool){
+  function isAddressSet(
+    address _address
+  )
+  public
+  constant returns (bool)
+  {
     return bytes(__uidByAddress[_address].lastUid).length > 0;
   }
 
-  function isUpgradable(address _address, string _uid) public constant returns (bool) {
-    if (isAddressSet(_address)) {
-      if (keccak256(getUid(_address)) == keccak256(_uid)) {
-        return false;
-      }
-    }
-    else if (isUidSet(_uid)) {
-      // last address associated with _uid must remove the identity before associating _uid with _address
-      return false;
+  function isUpgradable(
+    address _address,
+    string _uid
+  )
+  public
+  constant returns (bool)
+  {
+    if (isUidSet(_uid)) {
+      return keccak256(getUid(_address)) == keccak256(_uid);
     }
     return true;
   }
 
   // primary methods
 
-  function setIdentity(address _address, string _uid) external onlyManager {
+  function setIdentity(
+    address _address,
+    string _uid
+  )
+  external
+  onlyManager
+  isAppSet
+  {
     require(_address != address(0));
-    require(__isUid(_uid));
+    require(isUid(_uid));
     require(isUpgradable(_address, _uid));
 
     if (isAddressSet(_address)) {
-      // if _address is now associated with a new uid,
-      // this removes the association between_address and last uid associated with it
+      // if _address is associated with an oldUid,
+      // this removes the association between _address and oldUid
       __addressByUid[__uidByAddress[_address].lastUid] = Address(address(0), __addressByUid[__uidByAddress[_address].lastUid].lastUpdate);
       identities--;
     }
@@ -1356,18 +1445,31 @@ contract TweedentityStore is Ownable {
     __uidByAddress[_address] = Uid(_uid, now);
     __addressByUid[_uid] = Address(_address, now);
     identities++;
-    TweedentityAdded(_address, _uid);
+    IdentitySet(_address, _uid);
   }
 
-  function removeIdentity(address _address) external onlyManager {
+  function removeIdentity(
+    address _address
+  )
+  external
+  onlyManager
+  isAppSet
+  {
     __removeIdentity(_address);
   }
 
-  function removeMyIdentity() external {
+  function removeMyIdentity()
+  external
+  isAppSet
+  {
     __removeIdentity(msg.sender);
   }
 
-  function __removeIdentity(address _address) internal {
+  function __removeIdentity(
+    address _address
+  )
+  internal
+  {
     require(_address != address(0));
     require(isAddressSet(_address));
 
@@ -1375,34 +1477,65 @@ contract TweedentityStore is Ownable {
     __uidByAddress[_address] = Uid('', __uidByAddress[_address].lastUpdate);
     __addressByUid[uid] = Address(address(0), __addressByUid[uid].lastUpdate);
     identities--;
-    TweedentityRemoved(_address, uid);
+    IdentityRemoved(_address, uid);
   }
 
   // getters
 
-  function getUid(address _address) public constant returns (string){
+  function getUid(
+    address _address
+  )
+  public
+  constant returns (string)
+  {
     return __uidByAddress[_address].lastUid;
   }
 
-  function getUidAsInteger(address _address) external constant returns (uint){
+  function getUidAsInteger(
+    address _address
+  )
+  external
+  constant returns (uint)
+  {
     return __stringToUint(__uidByAddress[_address].lastUid);
   }
 
-  function getAddress(string _uid) external constant returns (address){
+  function getAddress(
+    string _uid
+  )
+  external
+  constant returns (address)
+  {
     return __addressByUid[_uid].lastAddress;
   }
 
-  function getAddressLastUpdate(address _address) external constant returns (uint) {
+  function getAddressLastUpdate(
+    address _address
+  )
+  external
+  constant returns (uint)
+  {
     return __uidByAddress[_address].lastUpdate;
   }
 
-  function getUidLastUpdate(string _uid) external constant returns (uint) {
+  function getUidLastUpdate(
+    string _uid
+  )
+  external
+  constant returns (uint)
+  {
     return __addressByUid[_uid].lastUpdate;
   }
 
   // string methods
 
-  function __isUid(string _uid) internal pure returns (bool) {
+  function isUid(
+    string _uid
+  )
+  public
+  pure
+  returns (bool)
+  {
     bytes memory uid = bytes(_uid);
     if (uid.length == 0) {
       return false;
@@ -1416,7 +1549,13 @@ contract TweedentityStore is Ownable {
     return true;
   }
 
-  function __stringToUint(string s) internal pure returns (uint result) {
+  function __stringToUint(
+    string s
+  )
+  internal
+  pure
+  returns (uint result)
+  {
     bytes memory b = bytes(s);
     uint i;
     result = 0;
@@ -1428,7 +1567,11 @@ contract TweedentityStore is Ownable {
     }
   }
 
-  function __uintToBytes(uint x) internal pure returns (bytes b) {
+  function __uintToBytes(uint x)
+  internal
+  pure
+  returns (bytes b)
+  {
     b = new bytes(32);
     for (uint i = 0; i < 32; i++) {
       b[i] = byte(uint8(x / (2 ** (8 * (31 - i)))));
@@ -1613,110 +1756,240 @@ contract AuthorizableLite /** 0.1.9 */ is Ownable {
 
 // File: contracts/TweedentityManager.sol
 
-contract TweedentityManager is AuthorizableLite {
+contract TweedentityManager is AuthorizableLite, TweedentityManagerInterfaceCompact {
 
-  bytes32 public contractName = keccak256("TweedentityManager");
+  uint public version = 1;
 
-  TweedentityStore public store;
-  address public storeAddress;
+  struct Store {
+    TweedentityStore store;
+    address addr;
+  }
 
-  modifier isStoreSet() {
-    require(store.manager() == address(this));
+  mapping(uint => bytes32) public appNicknames32;
+  mapping(uint => string) public appNicknames;
+  mapping(string => uint) private __appIds;
+
+  function getAppId(
+    string _nickname
+  )
+  external
+  constant
+  returns (uint) {
+    return __appIds[_nickname];
+  }
+
+  mapping(uint => Store) private __stores;
+
+  function setAStore(
+    string _appNickname,
+    address _address
+  )
+  external
+  onlyOwner
+  {
+    require(bytes(_appNickname).length > 0);
+    bytes32 _appNickname32 = keccak256(_appNickname);
+    require(_address != address(0));
+    TweedentityStore _store = TweedentityStore(_address);
+    require(_store.getAppNickname() == _appNickname32);
+    uint _appId = _store.getAppId();
+    require(appNicknames32[_appId] == 0x0);
+    appNicknames32[_appId] = _appNickname32;
+    appNicknames[_appId] = _appNickname;
+    __appIds[_appNickname] = _appId;
+
+    __stores[_appId] = Store(
+      TweedentityStore(_address),
+      _address
+    );
+  }
+
+  function isSettable(
+    uint _id,
+    string _nickname
+  )
+  external
+  constant
+  returns (bool)
+  {
+    return __appIds[_nickname] == 0 && appNicknames32[_id] == 0x0;
+  }
+
+  modifier isStoreSet(
+    uint _appId
+  ) {
+    require(appNicknames32[_appId] != 0x0);
     _;
   }
 
-  function setStore(address _address) onlyOwner public {
-    require(storeAddress == address(0));
-    require(_address != 0x0);
-    storeAddress = _address;
-    store = TweedentityStore(_address);
-    require(store.contractName() == keccak256("TweedentityStore"));
+  function __getStore(
+    uint _id
+  )
+  internal
+  constant returns (TweedentityStore)
+  {
+    return __stores[_id].store;
   }
 
-  uint public identities;
+  function getIsStoreSet(
+    string _nickname
+  )
+  external
+  constant returns (bool){
+    return __appIds[_nickname] != 0;
+  }
 
   uint public verifierLevel = 40;
   uint public customerServiceLevel = 30;
   uint public devLevel = 20;
 
-  bool public isDatabase = true;
-
   uint public minimumTimeBeforeUpdate = 1 days;
 
   // events
 
-  event MinimumTimeBeforeUpdateChanged(uint _time);
+  event MinimumTimeBeforeUpdateChanged(
+    uint time
+  );
+
+  event IdentityNotUpgradable(
+    string nickname,
+    address addr,
+    string uid
+  );
 
   // helpers
 
-  function isAddressSet(address _address) public constant returns (bool){
-    return store.isAddressSet(_address);
-  }
-
-  function isUidUpgradable(string _uid) public constant returns (bool) {
-    uint lastUpdate = store.getUidLastUpdate(_uid);
+  function isUidUpgradable(
+    TweedentityStore _store,
+    string _uid
+  )
+  internal
+  constant returns (bool)
+  {
+    uint lastUpdate = _store.getUidLastUpdate(_uid);
     return lastUpdate == 0 || now >= lastUpdate + minimumTimeBeforeUpdate;
   }
 
-  function isAddressUpgradable(address _address) public constant returns (bool) {
-    uint lastUpdate = store.getAddressLastUpdate(_address);
+  function isAddressUpgradable(
+    TweedentityStore _store,
+    address _address
+  )
+  internal
+  constant returns (bool)
+  {
+    uint lastUpdate = _store.getAddressLastUpdate(_address);
     return lastUpdate == 0 || now >= lastUpdate + minimumTimeBeforeUpdate;
   }
 
-  function isUpgradable(address _address, string _uid) public constant returns (bool) {
-    if (!store.isUpgradable(_address, _uid)) {
-      return false;
-    }
-    if (store.isAddressSet(_address) && (
-    !isAddressUpgradable(_address) || !isUidUpgradable(_uid)
-    )) {
+  function isUpgradable(
+    TweedentityStore _store,
+    address _address,
+    string _uid
+  )
+  internal
+  constant returns (bool)
+  {
+    if (!_store.isUpgradable(_address, _uid) || !isAddressUpgradable(_store, _address) || !isUidUpgradable(_store, _uid)) {
       return false;
     }
     return true;
   }
 
+  // error codes
+  uint public upgradable = 0;
+  uint public notUpgradableInStore = 1;
+  uint public uidNotUpgradable = 2;
+  uint public addressNotUpgradable = 3;
+  uint public uidAndAddressNotUpgradable = 4;
+
+  function getUpgradability(
+    uint _id,
+    address _address,
+    string _uid
+  )
+  external
+  constant returns (uint)
+  {
+    TweedentityStore _store = __getStore(_id);
+    if (!_store.isUpgradable(_address, _uid)) {
+      return notUpgradableInStore;
+    }
+    if (!isAddressUpgradable(_store, _address) && !isUidUpgradable(_store, _uid)) {
+      return uidAndAddressNotUpgradable;
+    } else if (!isAddressUpgradable(_store, _address)) {
+      return addressNotUpgradable;
+    } else if (!isUidUpgradable(_store, _uid)) {
+      return uidNotUpgradable;
+    }
+    return upgradable;
+  }
+
   // primary methods
 
-  function setIdentity(address _address, string _uid) external onlyAuthorizedAtLevel(verifierLevel) {
+  function setIdentity(
+    uint _appId,
+    address _address,
+    string _uid
+  )
+  external
+  onlyAuthorizedAtLevel(verifierLevel)
+  isStoreSet(_appId)
+  {
     require(_address != address(0));
-    require(__isUid(_uid));
-    require(isUpgradable(_address, _uid));
 
-    store.setIdentity(_address, _uid);
+    TweedentityStore _store = __getStore(_appId);
+    require(_store.isUid(_uid));
+    if (isUpgradable(_store, _address, _uid)) {
+      _store.setIdentity(_address, _uid);
+    } else {
+      IdentityNotUpgradable(appNicknames[_appId], _address, _uid);
+    }
   }
 
-  function removeIdentity(address _address) external onlyAuthorizedAtLevel(customerServiceLevel) {
-    store.removeIdentity(_address);
+  function removeIdentity(
+    uint _appId,
+    address _address
+  )
+  external
+  onlyAuthorizedAtLevel(customerServiceLevel)
+  isStoreSet(_appId)
+  {
+    TweedentityStore _store = __getStore(_appId);
+    _store.removeIdentity(_address);
   }
 
-  function removeMyIdentity() external {
-    store.removeIdentity(msg.sender);
+  function removeMyIdentity(
+    uint _appId
+  )
+  external
+  isStoreSet(_appId)
+  {
+    TweedentityStore _store = __getStore(_appId);
+    _store.removeIdentity(msg.sender);
   }
+
 
   // Changes the minimum time required before being allowed to update
-  // a tweedentity associating a new address to a screenName
-  function changeMinimumTimeBeforeUpdate(uint _newMinimumTime) onlyAuthorizedAtLevel(devLevel) external {
+  // a tweedentity associating a new address to a uid
+  function changeMinimumTimeBeforeUpdate(
+    uint _newMinimumTime
+  )
+  external
+  onlyAuthorizedAtLevel(devLevel)
+  {
     minimumTimeBeforeUpdate = _newMinimumTime;
     MinimumTimeBeforeUpdateChanged(_newMinimumTime);
   }
 
   // string methods
 
-  function __isUid(string _uid) internal pure returns (bool) {
-    bytes memory uid = bytes(_uid);
-    if (uid.length == 0) {
-      return false;
-    } else {
-      for (uint i = 0; i < uid.length; i++) {
-        if (uid[i] < 48 || uid[i] > 57) {
-          return false;
-        }
-      }
-    }
-    return true;
-  }
-
-  function __stringToUint(string s) internal pure returns (uint result) {
+  function __stringToUint(
+    string s
+  )
+  internal
+  pure
+  returns (uint result)
+  {
     bytes memory b = bytes(s);
     uint i;
     result = 0;
@@ -1728,24 +2001,16 @@ contract TweedentityManager is AuthorizableLite {
     }
   }
 
-  function __uintToBytes(uint x) internal pure returns (bytes b) {
+  function __uintToBytes(uint x)
+  internal
+  pure
+  returns (bytes b)
+  {
     b = new bytes(32);
     for (uint i = 0; i < 32; i++) {
       b[i] = byte(uint8(x / (2 ** (8 * (31 - i)))));
     }
   }
-
-  //  function __uintToString(uint _uint) internal pure returns (string) {
-  //    bytes32 data = bytes32(_uint);
-  //    bytes memory bytesString = new bytes(32);
-  //    for (uint j = 0; j < 32; j++) {
-  //      byte char = byte(bytes32(uint(data) * 2 ** (8 * j)));
-  //      if (char != 0) {
-  //        bytesString[j] = char;
-  //      }
-  //    }
-  //    return string(bytesString);
-  //  }
 
 }
 
@@ -1753,75 +2018,149 @@ contract TweedentityManager is AuthorizableLite {
 
 contract TweedentityVerifier is usingOraclize, Ownable {
 
-  event StartVerification(address addr);
-  event OwnershipConfirmed(address addr, string uid);
-  event VerificatioFailed(address addr);
-
   uint public version = 1;
+
+  event VerificationStarted(
+    address addr,
+    string appNickname,
+    string postId,
+    bytes32 oraclizeId
+  );
+
+  event VerificatioFailed(
+    address addr,
+    bytes32 oraclizeId
+  );
+
+  string public apiUrl = "https://api.tweedentity.net/";
 
   TweedentityManager public manager;
   address public managerAddress;
 
-  mapping(bytes32 => address) internal __tempData;
+  struct TempData {
+    address sender;
+    string appNickname;
+  }
+
+  mapping(bytes32 => TempData) internal __tempData;
 
   modifier isManagerSet() {
     require(managerAddress != address(0));
     // this would be better but consumes 33000 gas more
-//    require(manager.authorized(address(this)) == manager.verifierLevel());
+    //    require(manager.authorized(address(this)) == manager.verifierLevel());
     _;
   }
 
-  function setManager(address _address) onlyOwner public {
+  function setManager(
+    address _address
+  )
+  public
+  onlyOwner
+  {
     require(_address != 0x0);
     managerAddress = _address;
     manager = TweedentityManager(_address);
-    require(manager.contractName() == keccak256("TweedentityManager"));
   }
 
   // Verifies that the signature published on twitter is correct
-  function verifyTwitterAccountOwnership(string _id, uint _gasPrice, uint _gasLimit) public isManagerSet payable {
-    require(bytes(_id).length >= 18);
+  function verifyAccountOwnership(
+    string _appNickname,
+    string _pathname,
+    uint _gasPrice,
+    uint _gasLimit
+  )
+  public
+  isManagerSet
+  payable
+  {
+    require(bytes(_pathname).length > 0);
     require(msg.value == _gasPrice * _gasLimit);
 
-    StartVerification(msg.sender);
     oraclize_setCustomGasPrice(_gasPrice);
+
+    string[6] memory str;
+    str[0] = apiUrl;
+    str[1] = _appNickname;
+    str[2] = "/";
+    str[3] = _pathname;
+    str[4] = "/0x";
+    str[5] = __addressToString(msg.sender);
 
     bytes32 oraclizeID = oraclize_query(
       "URL",
-      strConcat("https://api.tweedentity.net/tweet/", _id, "/0x", addressToString(msg.sender)),
+      __concat(str),
       _gasLimit
     );
-    __tempData[oraclizeID] = msg.sender;
+    VerificationStarted(msg.sender, _appNickname, _pathname, oraclizeID);
+    __tempData[oraclizeID] = TempData(msg.sender, _appNickname);
   }
 
-  function __callback(bytes32 _oraclizeID, string _result) public {
+
+
+  function __callback(
+    bytes32 _oraclizeID,
+    string _result
+  )
+  public
+  {
     require(msg.sender == oraclize_cbAddress());
-
-    address sender = __tempData[_oraclizeID];
-
-    manager.setIdentity(sender, _result);
-    if (manager.isAddressSet(sender)) {
-      OwnershipConfirmed(sender, _result);
+    if (bytes(_result).length > 0) {
+      manager.setIdentity(manager.getAppId(__tempData[_oraclizeID].appNickname), __tempData[_oraclizeID].sender, _result);
     } else {
-      VerificatioFailed(sender);
+      VerificatioFailed(__tempData[_oraclizeID].sender, _oraclizeID);
     }
   }
 
-  function addressToString(address x) internal pure returns (string) {
+  function __addressToString(
+    address _address
+  )
+  internal
+  pure
+  returns (string)
+  {
     bytes memory s = new bytes(40);
     for (uint i = 0; i < 20; i++) {
-      byte b = byte(uint8(uint(x) / (2 ** (8 * (19 - i)))));
+      byte b = byte(uint8(uint(_address) / (2 ** (8 * (19 - i)))));
       byte hi = byte(uint8(b) / 16);
       byte lo = byte(uint8(b) - 16 * uint8(hi));
-      s[2 * i] = char(hi);
-      s[2 * i + 1] = char(lo);
+      s[2 * i] = __char(hi);
+      s[2 * i + 1] = __char(lo);
     }
     return string(s);
   }
 
-  function char(byte b) internal pure returns (byte c) {
+  function __char(
+    byte b
+  )
+  internal
+  pure
+  returns (byte c)
+  {
     if (b < 10) return byte(uint8(b) + 0x30);
     else return byte(uint8(b) + 0x57);
+  }
+
+  function __concat(
+    string[6] _strings
+  )
+  internal
+  returns (string)
+  {
+    uint len = 0;
+    uint i;
+    for (i=0;i<_strings.length;i++) {
+      len = len + bytes(_strings[i]).length;
+    }
+    string memory str = new string(len);
+    bytes memory bstr = bytes(str);
+    uint k = 0;
+    uint j;
+    bytes memory b;
+    for (i=0;i<_strings.length;i++) {
+      b = bytes(_strings[i]);
+      for (j = 0; j < b.length; j++) bstr[k++] = b[j];
+    }
+    return string(bstr);
   }
 
 }

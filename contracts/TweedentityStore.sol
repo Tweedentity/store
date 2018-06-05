@@ -3,9 +3,14 @@ pragma solidity ^0.4.18;
 
 import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
 
+import './TweedentityManagerInterfaceCompact.sol';
+
+
 contract TweedentityStore is Ownable {
 
   uint public identities;
+
+  TweedentityManagerInterfaceCompact private manager;
 
   struct Uid {
     string lastUid;
@@ -17,19 +22,22 @@ contract TweedentityStore is Ownable {
     uint lastUpdate;
   }
 
-  address public manager;
+  address public managerAddress;
 
   modifier onlyManager() {
-    require(msg.sender == manager);
+    require(msg.sender == managerAddress);
     _;
   }
 
-  function setManager(address _address)
+  function setManager(
+    address _address
+  )
   external
   onlyOwner
   {
     require(_address != address(0));
-    manager = _address;
+    managerAddress = _address;
+    manager = TweedentityManagerInterfaceCompact(_address);
   }
 
   // declaring app
@@ -38,7 +46,8 @@ contract TweedentityStore is Ownable {
   struct App {
     string name;
     string domain;
-    string identifier;
+    string nickname;
+    uint id;
   }
 
   App public app;
@@ -49,27 +58,47 @@ contract TweedentityStore is Ownable {
     _;
   }
 
-  function setApp(string _name, string _domain, string _identifier)
+  function setApp(
+    string _name,
+    string _domain,
+    string _nickname,
+    uint _id
+  )
   external
   onlyOwner
   {
+    require(_id > 0);
     require(!appSet);
-    app = App(_name, _domain, _identifier);
+    require(manager.isSettable(_id, _nickname));
+    app = App(_name, _domain, _nickname, _id);
     appSet = true;
   }
 
-  function getAppIdentifier()
+  function getAppNickname()
   external
   isAppSet
   constant returns (bytes32) {
-    return keccak256(app.identifier);
+    return keccak256(app.nickname);
+  }
+
+  function getAppId()
+  external
+  isAppSet
+  constant returns (uint) {
+    return app.id;
   }
 
   // events
 
-  event IdentitySet(address addr, string uid);
+  event IdentitySet(
+    address addr,
+    string uid
+  );
 
-  event IdentityRemoved(address addr, string uid);
+  event IdentityRemoved(
+    address addr,
+    string uid
+  );
 
 
   // mappings
@@ -80,21 +109,28 @@ contract TweedentityStore is Ownable {
 
   // helpers
 
-  function isUidSet(string _uid)
+  function isUidSet(
+    string _uid
+  )
   public
   constant returns (bool)
   {
     return __addressByUid[_uid].lastAddress != address(0);
   }
 
-  function isAddressSet(address _address)
+  function isAddressSet(
+    address _address
+  )
   public
   constant returns (bool)
   {
     return bytes(__uidByAddress[_address].lastUid).length > 0;
   }
 
-  function isUpgradable(address _address, string _uid)
+  function isUpgradable(
+    address _address,
+    string _uid
+  )
   public
   constant returns (bool)
   {
@@ -106,13 +142,16 @@ contract TweedentityStore is Ownable {
 
   // primary methods
 
-  function setIdentity(address _address, string _uid)
+  function setIdentity(
+    address _address,
+    string _uid
+  )
   external
   onlyManager
   isAppSet
   {
     require(_address != address(0));
-    require(__isUid(_uid));
+    require(isUid(_uid));
     require(isUpgradable(_address, _uid));
 
     if (isAddressSet(_address)) {
@@ -128,7 +167,9 @@ contract TweedentityStore is Ownable {
     IdentitySet(_address, _uid);
   }
 
-  function removeIdentity(address _address)
+  function removeIdentity(
+    address _address
+  )
   external
   onlyManager
   isAppSet
@@ -143,7 +184,9 @@ contract TweedentityStore is Ownable {
     __removeIdentity(msg.sender);
   }
 
-  function __removeIdentity(address _address)
+  function __removeIdentity(
+    address _address
+  )
   internal
   {
     require(_address != address(0));
@@ -158,35 +201,45 @@ contract TweedentityStore is Ownable {
 
   // getters
 
-  function getUid(address _address)
+  function getUid(
+    address _address
+  )
   public
   constant returns (string)
   {
     return __uidByAddress[_address].lastUid;
   }
 
-  function getUidAsInteger(address _address)
+  function getUidAsInteger(
+    address _address
+  )
   external
   constant returns (uint)
   {
     return __stringToUint(__uidByAddress[_address].lastUid);
   }
 
-  function getAddress(string _uid)
+  function getAddress(
+    string _uid
+  )
   external
   constant returns (address)
   {
     return __addressByUid[_uid].lastAddress;
   }
 
-  function getAddressLastUpdate(address _address)
+  function getAddressLastUpdate(
+    address _address
+  )
   external
   constant returns (uint)
   {
     return __uidByAddress[_address].lastUpdate;
   }
 
-  function getUidLastUpdate(string _uid)
+  function getUidLastUpdate(
+    string _uid
+  )
   external
   constant returns (uint)
   {
@@ -195,8 +248,10 @@ contract TweedentityStore is Ownable {
 
   // string methods
 
-  function __isUid(string _uid)
-  internal
+  function isUid(
+    string _uid
+  )
+  public
   pure
   returns (bool)
   {
@@ -213,7 +268,9 @@ contract TweedentityStore is Ownable {
     return true;
   }
 
-  function __stringToUint(string s)
+  function __stringToUint(
+    string s
+  )
   internal
   pure
   returns (uint result)

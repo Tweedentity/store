@@ -3,53 +3,89 @@ pragma solidity ^0.4.18;
 import 'authorizable/contracts/AuthorizableLite.sol';
 
 import './TweedentityStore.sol';
+import './TweedentityManagerInterfaceCompact.sol';
 
-contract TweedentityManager is AuthorizableLite {
+contract TweedentityManager is AuthorizableLite, TweedentityManagerInterfaceCompact {
+
+  uint public version = 1;
 
   struct Store {
     TweedentityStore store;
     address addr;
   }
 
-  mapping(bytes32 => Store) private __store;
-  string[] public identifiers;
-  mapping(string => bool) private __storeSet;
+  mapping(uint => bytes32) public appNicknames32;
+  mapping(uint => string) public appNicknames;
+  mapping(string => uint) private __appIds;
 
-  function setAStore(string _identifier, address _address)
+  function getAppId(
+    string _nickname
+  )
+  external
+  constant
+  returns (uint) {
+    return __appIds[_nickname];
+  }
+
+  mapping(uint => Store) private __stores;
+
+  function setAStore(
+    string _appNickname,
+    address _address
+  )
   external
   onlyOwner
   {
-    require(bytes(_identifier).length > 0);
-    bytes32 identifier = keccak256(_identifier);
-    require(!__storeSet[_identifier]);
-    require(_address != 0x0);
-    __store[identifier] = Store(
+    require(bytes(_appNickname).length > 0);
+    bytes32 _appNickname32 = keccak256(_appNickname);
+    require(_address != address(0));
+    TweedentityStore _store = TweedentityStore(_address);
+    require(_store.getAppNickname() == _appNickname32);
+    uint _appId = _store.getAppId();
+    require(appNicknames32[_appId] == 0x0);
+    appNicknames32[_appId] = _appNickname32;
+    appNicknames[_appId] = _appNickname;
+    __appIds[_appNickname] = _appId;
+
+    __stores[_appId] = Store(
       TweedentityStore(_address),
       _address
     );
-    // we want to be sure that we set the right store
-    require(__store[identifier].store.getAppIdentifier() == identifier);
-    identifiers.push(_identifier);
-    __storeSet[_identifier] = true;
   }
 
-  modifier isStoreSet(string _identifier) {
-    require(__storeSet[_identifier]);
+  function isSettable(
+    uint _id,
+    string _nickname
+  )
+  external
+  constant
+  returns (bool)
+  {
+    return __appIds[_nickname] == 0 && appNicknames32[_id] == 0x0;
+  }
+
+  modifier isStoreSet(
+    uint _appId
+  ) {
+    require(appNicknames32[_appId] != 0x0);
     _;
   }
 
-  function __getStore(string _identifier)
+  function __getStore(
+    uint _id
+  )
   internal
   constant returns (TweedentityStore)
   {
-    bytes32 identifier = keccak256(_identifier);
-    return __store[identifier].store;
+    return __stores[_id].store;
   }
 
-  function getStoreSet(string _identifier)
+  function getIsStoreSet(
+    string _nickname
+  )
   external
   constant returns (bool){
-    return __storeSet[_identifier];
+    return __appIds[_nickname] != 0;
   }
 
   uint public verifierLevel = 40;
@@ -60,13 +96,22 @@ contract TweedentityManager is AuthorizableLite {
 
   // events
 
-  event MinimumTimeBeforeUpdateChanged(uint time);
+  event MinimumTimeBeforeUpdateChanged(
+    uint time
+  );
 
-  event IdentityNotUpgradable(string identifier, address addr, string uid);
+  event IdentityNotUpgradable(
+    string nickname,
+    address addr,
+    string uid
+  );
 
   // helpers
 
-  function isUidUpgradable(TweedentityStore _store, string _uid)
+  function isUidUpgradable(
+    TweedentityStore _store,
+    string _uid
+  )
   internal
   constant returns (bool)
   {
@@ -74,7 +119,10 @@ contract TweedentityManager is AuthorizableLite {
     return lastUpdate == 0 || now >= lastUpdate + minimumTimeBeforeUpdate;
   }
 
-  function isAddressUpgradable(TweedentityStore _store, address _address)
+  function isAddressUpgradable(
+    TweedentityStore _store,
+    address _address
+  )
   internal
   constant returns (bool)
   {
@@ -82,7 +130,11 @@ contract TweedentityManager is AuthorizableLite {
     return lastUpdate == 0 || now >= lastUpdate + minimumTimeBeforeUpdate;
   }
 
-  function isUpgradable(TweedentityStore _store, address _address, string _uid)
+  function isUpgradable(
+    TweedentityStore _store,
+    address _address,
+    string _uid
+  )
   internal
   constant returns (bool)
   {
@@ -99,11 +151,15 @@ contract TweedentityManager is AuthorizableLite {
   uint public addressNotUpgradable = 3;
   uint public uidAndAddressNotUpgradable = 4;
 
-  function getUpgradability(string _identifier, address _address, string _uid)
+  function getUpgradability(
+    uint _id,
+    address _address,
+    string _uid
+  )
   external
   constant returns (uint)
   {
-    TweedentityStore _store = __getStore(_identifier);
+    TweedentityStore _store = __getStore(_id);
     if (!_store.isUpgradable(_address, _uid)) {
       return notUpgradableInStore;
     }
@@ -119,42 +175,54 @@ contract TweedentityManager is AuthorizableLite {
 
   // primary methods
 
-  function setIdentity(string _identifier, address _address, string _uid)
+  function setIdentity(
+    uint _appId,
+    address _address,
+    string _uid
+  )
   external
   onlyAuthorizedAtLevel(verifierLevel)
-  isStoreSet(_identifier)
+  isStoreSet(_appId)
   {
     require(_address != address(0));
-    require(__isUid(_uid));
 
-    TweedentityStore _store = __getStore(_identifier);
+    TweedentityStore _store = __getStore(_appId);
+    require(_store.isUid(_uid));
     if (isUpgradable(_store, _address, _uid)) {
       _store.setIdentity(_address, _uid);
     } else {
-      IdentityNotUpgradable(_identifier, _address, _uid);
+      IdentityNotUpgradable(appNicknames[_appId], _address, _uid);
     }
   }
 
-  function removeIdentity(string _identifier, address _address)
+  function removeIdentity(
+    uint _appId,
+    address _address
+  )
   external
   onlyAuthorizedAtLevel(customerServiceLevel)
-  isStoreSet(_identifier)
+  isStoreSet(_appId)
   {
-    TweedentityStore _store = __getStore(_identifier);
+    TweedentityStore _store = __getStore(_appId);
     _store.removeIdentity(_address);
   }
 
-  function removeMyIdentity(string _identifier)
+  function removeMyIdentity(
+    uint _appId
+  )
   external
-  isStoreSet(_identifier)
+  isStoreSet(_appId)
   {
-    TweedentityStore _store = __getStore(_identifier);
+    TweedentityStore _store = __getStore(_appId);
     _store.removeIdentity(msg.sender);
   }
 
+
   // Changes the minimum time required before being allowed to update
   // a tweedentity associating a new address to a uid
-  function changeMinimumTimeBeforeUpdate(uint _newMinimumTime)
+  function changeMinimumTimeBeforeUpdate(
+    uint _newMinimumTime
+  )
   external
   onlyAuthorizedAtLevel(devLevel)
   {
@@ -164,25 +232,9 @@ contract TweedentityManager is AuthorizableLite {
 
   // string methods
 
-  function __isUid(string _uid)
-  internal
-  pure
-  returns (bool)
-  {
-    bytes memory uid = bytes(_uid);
-    if (uid.length == 0) {
-      return false;
-    } else {
-      for (uint i = 0; i < uid.length; i++) {
-        if (uid[i] < 48 || uid[i] > 57) {
-          return false;
-        }
-      }
-    }
-    return true;
-  }
-
-  function __stringToUint(string s)
+  function __stringToUint(
+    string s
+  )
   internal
   pure
   returns (uint result)
@@ -208,17 +260,5 @@ contract TweedentityManager is AuthorizableLite {
       b[i] = byte(uint8(x / (2 ** (8 * (31 - i)))));
     }
   }
-
-  //  function __uintToString(uint _uint) internal pure returns (string) {
-  //    bytes32 data = bytes32(_uint);
-  //    bytes memory bytesString = new bytes(32);
-  //    for (uint j = 0; j < 32; j++) {
-  //      byte char = byte(bytes32(uint(data) * 2 ** (8 * j)));
-  //      if (char != 0) {
-  //        bytesString[j] = char;
-  //      }
-  //    }
-  //    return string(bytesString);
-  //  }
 
 }
