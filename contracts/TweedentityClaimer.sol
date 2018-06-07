@@ -7,9 +7,36 @@ import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
 import './TweedentityManager.sol';
 
 
-contract TweedentityClaimer is usingOraclize, Ownable {
+/** Tweedentity 0.0.0 */
 
-  uint public version = 1;
+/**
+ * @title TweedentityClaimer
+ * @author Francesco Sullo <francesco@sullo.co>
+ * @dev It allow user to self claim ownership of a supported web app account
+ */
+
+contract TweedentityClaimer
+is usingOraclize, Ownable
+{
+
+  string public versionDate = "2018-06-06";
+
+  string public apiUrl = "https://api.tweedentity.net/";
+
+  struct TempData {
+    address sender;
+    uint appId;
+  }
+
+  mapping(bytes32 => TempData) internal __tempData;
+
+  TweedentityManager public manager;
+  address public managerAddress;
+
+
+
+  //events
+
 
   event VerificationStarted(
     bytes32 oraclizeId,
@@ -22,24 +49,10 @@ contract TweedentityClaimer is usingOraclize, Ownable {
     bytes32 oraclizeId
   );
 
-  string public apiUrl = "https://api.tweedentity.net/";
 
-  TweedentityManager public manager;
-  address public managerAddress;
 
-  struct TempData {
-    address sender;
-    uint appId;
-  }
+  // config
 
-  mapping(bytes32 => TempData) internal __tempData;
-
-  modifier isManagerSet() {
-    require(managerAddress != address(0));
-    // this would be better but consumes 33000 gas more
-    //    require(manager.authorized(address(this)) == manager.verifierLevel());
-    _;
-  }
 
   function setManager(
     address _address
@@ -52,19 +65,30 @@ contract TweedentityClaimer is usingOraclize, Ownable {
     manager = TweedentityManager(_address);
   }
 
-  // Verifies that the signature published on twitter is correct
+
+
+  // primary methods
+
+
+  /**
+   * @dev Allow a wallet to claim ownership of an account
+   * @param _appNickname Identifies the web app for the account
+   * @param _postId Id id of the post contains the signature
+   * @param _gasPrice The gas price for Oraclize
+   * @param _gasLimit The gas limit for Oraclize
+   */
   function claimOwnership(
     string _appNickname,
-    string _pathname,
+    string _postId,
     uint _gasPrice,
     uint _gasLimit
   )
   public
-  isManagerSet
   payable
   {
-    require(bytes(_pathname).length > 0);
+    require(bytes(_postId).length > 0);
     require(msg.value == _gasPrice * _gasLimit);
+    require(managerAddress != address(0));
 
     oraclize_setCustomGasPrice(_gasPrice);
 
@@ -72,7 +96,7 @@ contract TweedentityClaimer is usingOraclize, Ownable {
     str[0] = apiUrl;
     str[1] = _appNickname;
     str[2] = "/";
-    str[3] = _pathname;
+    str[3] = _postId;
     str[4] = "/0x";
     str[5] = __addressToString(msg.sender);
 
@@ -81,12 +105,16 @@ contract TweedentityClaimer is usingOraclize, Ownable {
       __concat(str),
       _gasLimit
     );
-    VerificationStarted(oraclizeID, msg.sender, _appNickname, _pathname);
+    VerificationStarted(oraclizeID, msg.sender, _appNickname, _postId);
     __tempData[oraclizeID] = TempData(msg.sender, manager.getAppId(_appNickname));
   }
 
 
-
+  /**
+   * @dev Receive the call from Oraclize
+   * @param _oraclizeID The oraclize id
+   * @param _result The text resulting from requesting the url
+   */
   function __callback(
     bytes32 _oraclizeID,
     string _result
@@ -100,6 +128,11 @@ contract TweedentityClaimer is usingOraclize, Ownable {
       VerificatioFailed(_oraclizeID);
     }
   }
+
+
+
+  // private methods
+
 
   function __addressToString(
     address _address
@@ -119,6 +152,7 @@ contract TweedentityClaimer is usingOraclize, Ownable {
     return string(s);
   }
 
+
   function __char(
     byte b
   )
@@ -130,6 +164,7 @@ contract TweedentityClaimer is usingOraclize, Ownable {
     else return byte(uint8(b) + 0x57);
   }
 
+
   function __concat(
     string[6] _strings
   )
@@ -138,7 +173,7 @@ contract TweedentityClaimer is usingOraclize, Ownable {
   {
     uint len = 0;
     uint i;
-    for (i=0;i<_strings.length;i++) {
+    for (i = 0; i < _strings.length; i++) {
       len = len + bytes(_strings[i]).length;
     }
     string memory str = new string(len);
@@ -146,7 +181,7 @@ contract TweedentityClaimer is usingOraclize, Ownable {
     uint k = 0;
     uint j;
     bytes memory b;
-    for (i=0;i<_strings.length;i++) {
+    for (i = 0; i < _strings.length; i++) {
       b = bytes(_strings[i]);
       for (j = 0; j < b.length; j++) bstr[k++] = b[j];
     }
