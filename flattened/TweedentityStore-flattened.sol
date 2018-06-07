@@ -126,7 +126,7 @@ is Ownable
 
 
   modifier onlyManager() {
-    require(msg.sender == managerAddress);
+    require(msg.sender == address(manager));
     _;
   }
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-if [[ -n "$SKIP_TEST" ]]
+if [[ -n "$SKIP_TESTS" ]]
 then
 
    echo "Skipping tests"
