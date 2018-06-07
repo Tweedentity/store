@@ -3,14 +3,26 @@ pragma solidity ^0.4.18;
 
 import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
 
-import './TweedentityManagerInterfaceCompact.sol';
+import './TweedentityManagerInterfaceMinimal.sol';
 
 
-contract TweedentityStore is Ownable {
+
+/**
+ * @title TweedentityStore
+ * @author Francesco Sullo <francesco@sullo.co>
+ * @dev It store the tweedentities related to the app
+ */
+
+
+
+contract TweedentityStore /** 1.0.0 */
+is Ownable
+{
 
   uint public identities;
 
-  TweedentityManagerInterfaceCompact private manager;
+  TweedentityManagerInterfaceMinimal public manager;
+  address public managerAddress;
 
   struct Uid {
     string lastUid;
@@ -22,26 +34,8 @@ contract TweedentityStore is Ownable {
     uint lastUpdate;
   }
 
-  address public managerAddress;
-
-  modifier onlyManager() {
-    require(msg.sender == managerAddress);
-    _;
-  }
-
-  function setManager(
-    address _address
-  )
-  external
-  onlyOwner
-  {
-    require(_address != address(0));
-    managerAddress = _address;
-    manager = TweedentityManagerInterfaceCompact(_address);
-  }
-
-  // declaring app
-  // example: (Twitter, twitter.com, twitter)
+  mapping(string => Address) internal __addressByUid;
+  mapping(address => Uid) internal __uidByAddress;
 
   struct App {
     string name;
@@ -53,11 +47,66 @@ contract TweedentityStore is Ownable {
   App public app;
   bool public appSet;
 
+
+
+  // events
+
+
+  event IdentitySet(
+    address addr,
+    string uid
+  );
+
+
+  event IdentityRemoved(
+    address addr,
+    string uid
+  );
+
+
+
+  // modifiers
+
+
+  modifier onlyManager() {
+    require(msg.sender == address(manager));
+    _;
+  }
+
+
   modifier isAppSet() {
     require(appSet);
     _;
   }
 
+
+
+  // config
+
+
+  /**
+  * @dev Sets the manager
+  * @param _address Manager's address
+  */
+  function setManager(
+    address _address
+  )
+  external
+  onlyOwner
+  {
+    require(_address != address(0));
+    managerAddress = _address;
+    manager = TweedentityManagerInterfaceMinimal(_address);
+  }
+
+
+  /**
+  * @dev Sets the app
+  * @param _name Name (e.g. Twitter)
+  * @param _domain Domain (e.g. twitter.com)
+  * @param _nickname Nickname (e.g. twitter)
+  * @param _id ID (e.g. 1)
+  */
   function setApp(
     string _name,
     string _domain,
@@ -74,41 +123,13 @@ contract TweedentityStore is Ownable {
     appSet = true;
   }
 
-  function getAppNickname()
-  external
-  isAppSet
-  constant returns (bytes32) {
-    return keccak256(app.nickname);
-  }
-
-  function getAppId()
-  external
-  isAppSet
-  constant returns (uint) {
-    return app.id;
-  }
-
-  // events
-
-  event IdentitySet(
-    address addr,
-    string uid
-  );
-
-  event IdentityRemoved(
-    address addr,
-    string uid
-  );
-
-
-  // mappings
-
-  mapping(string => Address) internal __addressByUid;
-
-  mapping(address => Uid) internal __uidByAddress;
 
   // helpers
 
+  /**
+   * @dev Checks if a user-id's been used
+   * @param _uid The user-id
+   */
   function isUidSet(
     string _uid
   )
@@ -118,6 +139,11 @@ contract TweedentityStore is Ownable {
     return __addressByUid[_uid].lastAddress != address(0);
   }
 
+
+  /**
+   * @dev Checks if an address's been used
+   * @param _address The address
+   */
   function isAddressSet(
     address _address
   )
@@ -127,6 +153,12 @@ contract TweedentityStore is Ownable {
     return bytes(__uidByAddress[_address].lastUid).length > 0;
   }
 
+
+  /**
+   * @dev Checks if a tweedentity is upgradable
+   * @param _address The address
+   * @param _uid The user-id
+   */
   function isUpgradable(
     address _address,
     string _uid
@@ -140,8 +172,16 @@ contract TweedentityStore is Ownable {
     return true;
   }
 
+
+
   // primary methods
 
+
+  /**
+   * @dev Sets a tweedentity
+   * @param _address The address of the wallet
+   * @param _uid The user-id of the owner user account
+   */
   function setIdentity(
     address _address,
     string _uid
@@ -167,27 +207,17 @@ contract TweedentityStore is Ownable {
     IdentitySet(_address, _uid);
   }
 
-  function removeIdentity(
+
+  /**
+   * @dev Unset a tweedentity
+   * @param _address The address of the wallet
+   */
+  function unsetIdentity(
     address _address
   )
   external
   onlyManager
   isAppSet
-  {
-    __removeIdentity(_address);
-  }
-
-  function removeMyIdentity()
-  external
-  isAppSet
-  {
-    __removeIdentity(msg.sender);
-  }
-
-  function __removeIdentity(
-    address _address
-  )
-  internal
   {
     require(_address != address(0));
     require(isAddressSet(_address));
@@ -199,8 +229,37 @@ contract TweedentityStore is Ownable {
     IdentityRemoved(_address, uid);
   }
 
+
+
   // getters
 
+
+  /**
+   * @dev Returns the keccak256 of the app nickname
+   */
+  function getAppNickname()
+  external
+  isAppSet
+  constant returns (bytes32) {
+    return keccak256(app.nickname);
+  }
+
+
+  /**
+   * @dev Returns the appId
+   */
+  function getAppId()
+  external
+  isAppSet
+  constant returns (uint) {
+    return app.id;
+  }
+
+
+  /**
+   * @dev Returns the user-id associated to a wallet
+   * @param _address The address of the wallet
+   */
   function getUid(
     address _address
   )
@@ -210,6 +269,11 @@ contract TweedentityStore is Ownable {
     return __uidByAddress[_address].lastUid;
   }
 
+
+  /**
+   * @dev Returns the user-id associated to a wallet as a unsigned integer
+   * @param _address The address of the wallet
+   */
   function getUidAsInteger(
     address _address
   )
@@ -219,6 +283,11 @@ contract TweedentityStore is Ownable {
     return __stringToUint(__uidByAddress[_address].lastUid);
   }
 
+
+  /**
+   * @dev Returns the address associated to a user-id
+   * @param _uid The user-id
+   */
   function getAddress(
     string _uid
   )
@@ -228,6 +297,11 @@ contract TweedentityStore is Ownable {
     return __addressByUid[_uid].lastAddress;
   }
 
+
+  /**
+   * @dev Returns the timestamp of last update by address
+   * @param _address The address of the wallet
+   */
   function getAddressLastUpdate(
     address _address
   )
@@ -237,6 +311,11 @@ contract TweedentityStore is Ownable {
     return __uidByAddress[_address].lastUpdate;
   }
 
+
+  /**
+ * @dev Returns the timestamp of last update by user-id
+ * @param _uid The user-id
+ */
   function getUidLastUpdate(
     string _uid
   )
@@ -246,7 +325,10 @@ contract TweedentityStore is Ownable {
     return __addressByUid[_uid].lastUpdate;
   }
 
-  // string methods
+
+
+  // utils
+
 
   function isUid(
     string _uid
@@ -268,6 +350,11 @@ contract TweedentityStore is Ownable {
     return true;
   }
 
+
+
+  // private methods
+
+
   function __stringToUint(
     string s
   )
@@ -285,6 +372,7 @@ contract TweedentityStore is Ownable {
       }
     }
   }
+
 
   function __uintToBytes(uint x)
   internal

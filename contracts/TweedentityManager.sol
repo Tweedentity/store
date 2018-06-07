@@ -1,34 +1,75 @@
 pragma solidity ^0.4.18;
 
-import 'authorizable/contracts/AuthorizableLite.sol';
+
+import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
 
 import './TweedentityStore.sol';
-import './TweedentityManagerInterfaceCompact.sol';
+import './TweedentityManagerInterfaceMinimal.sol';
 
-contract TweedentityManager is AuthorizableLite, TweedentityManagerInterfaceCompact {
 
-  uint public version = 1;
+
+/**
+ * @title TweedentityManager
+ * @author Francesco Sullo <francesco@sullo.co>
+ * @dev Sets and removes tweedentities in the store,
+ * adding more logic to the simple logic of the store
+ */
+
+
+
+contract TweedentityManager /** 1.0.0 */
+is TweedentityManagerInterfaceMinimal, Ownable
+{
 
   struct Store {
     TweedentityStore store;
     address addr;
   }
 
+  mapping(uint => Store) private __stores;
+
   mapping(uint => bytes32) public appNicknames32;
   mapping(uint => string) public appNicknames;
   mapping(string => uint) private __appIds;
 
-  function getAppId(
-    string _nickname
-  )
-  external
-  constant
-  returns (uint) {
-    return __appIds[_nickname];
-  }
+  address public claimer;
+  mapping(address => bool) public customerService;
+  address[] public customerServiceAddress;
 
-  mapping(uint => Store) private __stores;
+  uint public upgradable = 0;
+  uint public notUpgradableInStore = 1;
+  uint public uidNotUpgradable = 2;
+  uint public addressNotUpgradable = 3;
+  uint public uidAndAddressNotUpgradable = 4;
 
+  uint public minimumTimeBeforeUpdate = 1 days;
+
+
+
+  // events
+
+
+  event MinimumTimeBeforeUpdateChanged(
+    uint time
+  );
+
+
+  event IdentityNotUpgradable(
+    string nickname,
+    address addr,
+    string uid
+  );
+
+
+
+  // config
+
+
+  /**
+   * @dev Sets a store to be used by the manager
+   * @param _appNickname The nickname of the app for which the store's been configured
+   * @param _address The address of the store
+   */
   function setAStore(
     string _appNickname,
     address _address
@@ -53,6 +94,12 @@ contract TweedentityManager is AuthorizableLite, TweedentityManagerInterfaceComp
     );
   }
 
+
+  /**
+   * @dev Tells to a store if id and nickname are available
+   * @param _id The id of the store
+   * @param _nickname The nickname of the store
+   */
   function isSettable(
     uint _id,
     string _nickname
@@ -64,12 +111,85 @@ contract TweedentityManager is AuthorizableLite, TweedentityManagerInterfaceComp
     return __appIds[_nickname] == 0 && appNicknames32[_id] == 0x0;
   }
 
+
+  /**
+   * @dev Sets the claimer which will verify the ownership and call to set a tweedentity
+   * @param _address Address of the claimer
+   */
+  function setClaimer(
+    address _address
+  )
+  public
+  onlyOwner
+  {
+    require(_address != 0x0);
+    claimer = _address;
+  }
+
+
+  /**
+   * @dev Sets a wallet as customer service to perform emergency removal of wrong, abused, squatted tweedentities (due, for example, to hacking of the Twitter account)
+   * @param _address The customer service wallet
+   * @param _status The status (true is set, false is unset)
+   */
+  function setCustomerService(
+    address _address,
+    bool _status
+  )
+  public
+  onlyOwner
+  {
+    require(_address != 0x0);
+    customerService[_address] = _status;
+    bool found;
+    for (uint i = 0; i < customerServiceAddress.length; i++) {
+      if (customerServiceAddress[i] == _address) {
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      customerServiceAddress.push(_address);
+    }
+  }
+
+
+
+  //modifiers
+
+
   modifier isStoreSet(
     uint _appId
   ) {
     require(appNicknames32[_appId] != 0x0);
     _;
   }
+
+
+  modifier onlyClaimer() {
+    require(msg.sender == claimer);
+    _;
+  }
+
+
+  modifier onlyCustomerService() {
+    bool ok = msg.sender == owner ? true : false;
+    if (!ok) {
+      for (uint i = 0; i < customerServiceAddress.length; i++) {
+        if (customerServiceAddress[i] == msg.sender) {
+          ok = true;
+          break;
+        }
+      }
+    }
+    require(ok);
+    _;
+  }
+
+
+
+  // internal getters
+
 
   function __getStore(
     uint _id
@@ -80,33 +200,10 @@ contract TweedentityManager is AuthorizableLite, TweedentityManagerInterfaceComp
     return __stores[_id].store;
   }
 
-  function getIsStoreSet(
-    string _nickname
-  )
-  external
-  constant returns (bool){
-    return __appIds[_nickname] != 0;
-  }
 
-  uint public verifierLevel = 40;
-  uint public customerServiceLevel = 30;
-  uint public devLevel = 20;
-
-  uint public minimumTimeBeforeUpdate = 1 days;
-
-  // events
-
-  event MinimumTimeBeforeUpdateChanged(
-    uint time
-  );
-
-  event IdentityNotUpgradable(
-    string nickname,
-    address addr,
-    string uid
-  );
 
   // helpers
+
 
   function isUidUpgradable(
     TweedentityStore _store,
@@ -119,6 +216,7 @@ contract TweedentityManager is AuthorizableLite, TweedentityManagerInterfaceComp
     return lastUpdate == 0 || now >= lastUpdate + minimumTimeBeforeUpdate;
   }
 
+
   function isAddressUpgradable(
     TweedentityStore _store,
     address _address
@@ -129,6 +227,7 @@ contract TweedentityManager is AuthorizableLite, TweedentityManagerInterfaceComp
     uint lastUpdate = _store.getAddressLastUpdate(_address);
     return lastUpdate == 0 || now >= lastUpdate + minimumTimeBeforeUpdate;
   }
+
 
   function isUpgradable(
     TweedentityStore _store,
@@ -144,22 +243,53 @@ contract TweedentityManager is AuthorizableLite, TweedentityManagerInterfaceComp
     return true;
   }
 
-  // error codes
-  uint public upgradable = 0;
-  uint public notUpgradableInStore = 1;
-  uint public uidNotUpgradable = 2;
-  uint public addressNotUpgradable = 3;
-  uint public uidAndAddressNotUpgradable = 4;
 
+
+  // getters
+
+
+  /**
+   * @dev Gets the app-id associated to a nickname
+   * @param _nickname The nickname of a configured app
+   */
+  function getAppId(
+    string _nickname
+  )
+  external
+  constant
+  returns (uint) {
+    return __appIds[_nickname];
+  }
+
+
+  /**
+   * @dev Allows other contracts to check if a store is set
+   * @param _nickname The nickname of a configured app
+   */
+  function getIsStoreSet(
+    string _nickname
+  )
+  external
+  constant returns (bool){
+    return __appIds[_nickname] != 0;
+  }
+
+
+  /**
+   * @dev Return a numeric code about the upgradability of a couple wallet-uid in a certain app
+   * @param _appId The id of the app
+   * @param _address The address of the wallet
+   * @param _uid The user-id
+   */
   function getUpgradability(
-    uint _id,
+    uint _appId,
     address _address,
     string _uid
   )
   external
   constant returns (uint)
   {
-    TweedentityStore _store = __getStore(_id);
+    TweedentityStore _store = __getStore(_appId);
     if (!_store.isUpgradable(_address, _uid)) {
       return notUpgradableInStore;
     }
@@ -173,15 +303,24 @@ contract TweedentityManager is AuthorizableLite, TweedentityManagerInterfaceComp
     return upgradable;
   }
 
+
+
   // primary methods
 
+
+  /**
+   * @dev Sets a new identity
+   * @param _appId The id of the app
+   * @param _address The address of the wallet
+   * @param _uid The user-id
+   */
   function setIdentity(
     uint _appId,
     address _address,
     string _uid
   )
   external
-  onlyAuthorizedAtLevel(verifierLevel)
+  onlyClaimer
   isStoreSet(_appId)
   {
     require(_address != address(0));
@@ -195,18 +334,29 @@ contract TweedentityManager is AuthorizableLite, TweedentityManagerInterfaceComp
     }
   }
 
-  function removeIdentity(
+
+  /**
+   * @dev Unsets an existent identity
+   * @param _appId The id of the app
+   * @param _address The address of the wallet
+   */
+  function unsetIdentity(
     uint _appId,
     address _address
   )
   external
-  onlyAuthorizedAtLevel(customerServiceLevel)
+  onlyCustomerService
   isStoreSet(_appId)
   {
     TweedentityStore _store = __getStore(_appId);
-    _store.removeIdentity(_address);
+    _store.unsetIdentity(_address);
   }
 
+
+  /**
+   * @dev Allow the sender to unset its existent identity
+   * @param _appId The id of the app
+   */
   function removeMyIdentity(
     uint _appId
   )
@@ -214,23 +364,28 @@ contract TweedentityManager is AuthorizableLite, TweedentityManagerInterfaceComp
   isStoreSet(_appId)
   {
     TweedentityStore _store = __getStore(_appId);
-    _store.removeIdentity(msg.sender);
+    _store.unsetIdentity(msg.sender);
   }
 
 
-  // Changes the minimum time required before being allowed to update
-  // a tweedentity associating a new address to a uid
+  /**
+   * @dev Update the minimum time before allowing a wallet to update its data
+   * @param _newMinimumTime The new minimum time in seconds
+   */
   function changeMinimumTimeBeforeUpdate(
     uint _newMinimumTime
   )
   external
-  onlyAuthorizedAtLevel(devLevel)
+  onlyOwner
   {
     minimumTimeBeforeUpdate = _newMinimumTime;
     MinimumTimeBeforeUpdateChanged(_newMinimumTime);
   }
 
-  // string methods
+
+
+  // private methods
+
 
   function __stringToUint(
     string s
@@ -249,6 +404,7 @@ contract TweedentityManager is AuthorizableLite, TweedentityManagerInterfaceComp
       }
     }
   }
+
 
   function __uintToBytes(uint x)
   internal

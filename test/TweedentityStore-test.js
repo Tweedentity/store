@@ -53,7 +53,7 @@ contract('TweedentityStore', accounts => {
 
   it('should authorize manager to handle the data', async () => {
     await store.setManager(manager)
-    assert.equal(await store.managerAddress(), manager)
+    assert.equal((await store.managerAddress()), manager)
   })
 
   it('should revert trying to add a new tweedentity because the store is not declared', async () => {
@@ -115,7 +115,7 @@ contract('TweedentityStore', accounts => {
 
     assert.isTrue(await store.isAddressSet(rita))
 
-    await store.removeIdentity(rita, {from: manager})
+    await store.unsetIdentity(rita, {from: manager})
     assert.equal(await store.getUid(rita), '')
 
   })
@@ -138,13 +138,6 @@ contract('TweedentityStore', accounts => {
     assert.equal(await storeCaller.getAddress(id1), bob)
     assert.equal(await storeCaller.getAddressLastUpdate(bob), (await store.getAddressLastUpdate(bob)).valueOf())
     assert.equal(await storeCaller.getUidLastUpdate(id1), (await store.getUidLastUpdate(id1)).valueOf())
-  })
-
-
-  it('should allow bob to remove their own identity', async () => {
-    await store.removeMyIdentity({from: bob})
-    assert.equal(await store.getUid(bob), '')
-    assert.equal(await store.getAddress(id1), 0)
   })
 
 })

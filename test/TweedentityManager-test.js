@@ -16,13 +16,11 @@ contract('TweedentityManager', accounts => {
   let manager
   let managerCaller
 
-  let owner = accounts[0]
   let claimer = accounts[1]
   let customerService = accounts[2]
   let bob = accounts[3]
   let alice = accounts[4]
   let rita = accounts[5]
-  let developer = accounts[6]
   let mark = accounts[7]
 
   let id1 = '1'
@@ -55,10 +53,6 @@ contract('TweedentityManager', accounts => {
 
     await managerCaller.setManager(manager.address)
 
-    await manager.authorize(claimer, await getValue('verifierLevel'))
-    await manager.authorize(customerService, await getValue('customerServiceLevel'))
-    await manager.authorize(developer, await getValue('devLevel'))
-
     upgradable = await getValue('upgradable')
     notUpgradableInStore = await getValue('notUpgradableInStore')
     uidNotUpgradable = await getValue('uidNotUpgradable')
@@ -66,6 +60,13 @@ contract('TweedentityManager', accounts => {
     uidAndAddressNotUpgradable = await getValue('uidAndAddressNotUpgradable')
 
     wait = (new Wait(await Counter.new())).wait
+  })
+
+  it('should configure the manager', async () => {
+
+    await manager.setClaimer(claimer)
+    await manager.setCustomerService(customerService, true)
+
   })
 
   it('should see that the store has not been set', async () => {
@@ -122,9 +123,7 @@ contract('TweedentityManager', accounts => {
   })
 
   it('should change minimumTimeBeforeUpdate to 2 seconds', async () => {
-    await manager.changeMinimumTimeBeforeUpdate(2, {
-      from: developer
-    })
+    await manager.changeMinimumTimeBeforeUpdate(2)
     assert.equal(await manager.minimumTimeBeforeUpdate(), 2)
   })
 
@@ -227,7 +226,7 @@ contract('TweedentityManager', accounts => {
 
     assert.isTrue(await store.isAddressSet(rita))
 
-    await manager.removeIdentity(appId, rita, {
+    await manager.unsetIdentity(appId, rita, {
       from: customerService
     })
     assert.equal(await store.getUid(rita), '')

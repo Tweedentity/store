@@ -1,10 +1,9 @@
 {
   "name": "tweedentity",
-  "version": "0.0.10",
+  "version": "1.0.0",
   "description": "tweedentity",
   "dependencies": {},
   "devDependencies": {
-    "authorizable": "^0.1.13",
     "lodash": "^4.17.4",
     "openzeppelin-solidity": "^1.8.0",
     "sleep": "^5.1.1",
