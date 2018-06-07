@@ -10,10 +10,6 @@ const Counter = artifacts.require('./helpers/Counter')
 
 const TweedentityManagerCaller = artifacts.require('./helpers/TweedentityManagerCaller')
 
-function now() {
-  console.log(parseInt('' + Date.now() / 1000, 10), 'now')
-}
-
 contract('TweedentityManager', accounts => {
 
   let store
@@ -21,23 +17,21 @@ contract('TweedentityManager', accounts => {
   let managerCaller
 
   let owner = accounts[0]
-  let verifier = accounts[1]
+  let claimer = accounts[1]
   let customerService = accounts[2]
   let bob = accounts[3]
   let alice = accounts[4]
   let rita = accounts[5]
   let developer = accounts[6]
+  let mark = accounts[7]
 
   let id1 = '1'
   let id2 = '2'
   let id3 = '3'
+  let id4 = '4'
 
   let appNickname = 'twitter'
   let appId = 1
-
-  let verifierLevel
-  let customerServiceLevel
-  let devLevel
 
   let upgradable
   let notUpgradableInStore
@@ -61,7 +55,7 @@ contract('TweedentityManager', accounts => {
 
     await managerCaller.setManager(manager.address)
 
-    await manager.authorize(verifier, await getValue('verifierLevel'))
+    await manager.authorize(claimer, await getValue('verifierLevel'))
     await manager.authorize(customerService, await getValue('customerServiceLevel'))
     await manager.authorize(developer, await getValue('devLevel'))
 
@@ -92,7 +86,7 @@ contract('TweedentityManager', accounts => {
     assert.isFalse(await store.isUidSet(id1))
 
     await manager.setIdentity(appId, rita, id1, {
-      from: verifier
+      from: claimer
     })
     assert.equal(await store.getAddress(id1), rita)
     assert.isTrue(await store.isUidSet(id1))
@@ -106,7 +100,7 @@ contract('TweedentityManager', accounts => {
   it('should refuse trying to update rita with the uid id2', async () => {
 
     manager.setIdentity(appId, rita, id2, {
-      from: verifier
+      from: claimer
     })
 
     const result = await eventWatcher.watch(manager, {
@@ -121,21 +115,21 @@ contract('TweedentityManager', accounts => {
     assert.equal(result.args.uid, id2)
   })
 
-  it('should revert trying to associate accounts[5] to uid id3 using a not authorized owner', async () => {
+  it('should revert trying to associate accounts[mark to uid id3 using a not authorized owner', async () => {
 
-    await assertRevert(manager.setIdentity(appId, accounts[5], id3))
+    await assertRevert(manager.setIdentity(appId, mark, id3))
 
   })
 
-  it('should change minimumTimeBeforeUpdate to 1 second', async () => {
-    await manager.changeMinimumTimeBeforeUpdate(1, {
+  it('should change minimumTimeBeforeUpdate to 2 seconds', async () => {
+    await manager.changeMinimumTimeBeforeUpdate(2, {
       from: developer
     })
-    assert.equal(await manager.minimumTimeBeforeUpdate(), 1)
+    assert.equal(await manager.minimumTimeBeforeUpdate(), 2)
   })
 
-  it('should wait 1 second', async () => {
-    await wait()
+  it('should wait 2 seconds', async () => {
+    await wait(2)
     assert.isTrue(true)
   })
 
@@ -144,7 +138,7 @@ contract('TweedentityManager', accounts => {
     assert.equal(await store.getUid(rita), id1)
 
     manager.setIdentity(appId, bob, id1, {
-      from: verifier
+      from: claimer
     })
 
     const result = await eventWatcher.watch(manager, {
@@ -162,7 +156,7 @@ contract('TweedentityManager', accounts => {
 
   it('should associate again id1 to rita', async () => {
     manager.setIdentity(appId, rita, id1, {
-      from: verifier
+      from: claimer
     })
 
     const result = await eventWatcher.watch(store, {
@@ -178,14 +172,21 @@ contract('TweedentityManager', accounts => {
   })
 
   it('should check upgradabilities', async () => {
-    assert.equal(await manager.getUpgradability(appId, rita, id2), addressNotUpgradable)
+    await manager.setIdentity(appId, mark, id4, {
+      from: claimer
+    })
+
+    assert.equal(await manager.getUpgradability(appId, rita, id4), notUpgradableInStore)
+    assert.equal(await manager.getUpgradability(appId, rita, id3), addressNotUpgradable)
     assert.equal(await manager.getUpgradability(appId, alice, id2), upgradable)
     assert.equal(await manager.getUpgradability(appId, alice, id1), notUpgradableInStore)
     assert.equal(await manager.getUpgradability(appId, rita, id1), uidAndAddressNotUpgradable)
 
-    await wait()
-
+    await wait(2)
+    assert.equal(await manager.getUpgradability(appId, rita, id1), upgradable)
     assert.equal(await manager.getUpgradability(appId, rita, id2), upgradable)
+    assert.equal(await manager.getUpgradability(appId, rita, id4), notUpgradableInStore)
+
   })
 
   it('should associate after a second rita with the uid id2', async () => {
@@ -193,18 +194,18 @@ contract('TweedentityManager', accounts => {
     assert.equal(await store.getAddress(id2), 0)
 
     await manager.setIdentity(appId, rita, id2, {
-      from: verifier
+      from: claimer
     })
     assert.equal(await store.getUid(rita), id2)
 
   })
 
-  it('should be able to reverse after 1 second', async () => {
-    await wait()
+  it('should be able to reverse after 2 seconds', async () => {
+    await wait(2)
     // assert.isTrue(await manager.isUidUpgradable(store, id1))
 
     await manager.setIdentity(appId, rita, id1, {
-      from: verifier
+      from: claimer
     })
     // assert.isFalse(await manager.isUidUpgradable(store,id1))
     assert.equal(await store.getUid(rita), id1)
@@ -212,7 +213,7 @@ contract('TweedentityManager', accounts => {
 
   it('should associate id2 to alice', async () => {
     await manager.setIdentity(appId, alice, id2, {
-      from: verifier
+      from: claimer
     })
     assert.equal(await store.getUid(alice), id2)
   })
@@ -233,12 +234,12 @@ contract('TweedentityManager', accounts => {
     assert.isFalse(await store.isAddressSet(rita))
   })
 
-  it('should allow bob to be associated to id1 after 1 second', async () => {
+  it('should allow bob to be associated to id1 after 2 seconds', async () => {
 
-    await wait()
+    await wait(2)
 
     await manager.setIdentity(appId, bob, id1, {
-      from: verifier
+      from: claimer
     })
 
     assert.equal(await store.getUid(bob), id1)

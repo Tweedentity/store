@@ -16,8 +16,10 @@ class EventWatcher {
   }
 
   stop() {
-    this.event.stopWatching()
-    this.event = null
+    if (this.event) {
+      this.event.stopWatching()
+      this.event = null
+    }
   }
 }
 

@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 
+rm flattened/*
+
 contracts=(
 "TweedentityStore"
 "TweedentityManager"
-"TweedentityVerifier"
+"TweedentityClaimer"
 )
 
 for c in "${contracts[@]}"

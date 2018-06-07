@@ -3,7 +3,7 @@ const eventWatcher = require('./helpers/EventWatcher')
 
 const TweedentityStore = artifacts.require('./TweedentityStore.sol')
 const TweedentityManager = artifacts.require('./TweedentityManager.sol')
-const TweedentityVerifier = artifacts.require('./TweedentityVerifier.sol')
+const TweedentityClaimer = artifacts.require('./TweedentityClaimer.sol')
 
 const Wait = require('./helpers/wait')
 const Counter = artifacts.require('./helpers/Counter')
@@ -20,11 +20,11 @@ function logValue(...x) {
 }
 
 
-contract('TweedentityVerifier', accounts => {
+contract('TweedentityClaimer', accounts => {
 
   let manager
   let store
-  let verifier
+  let claimer
 
   let wait
 
@@ -34,7 +34,7 @@ contract('TweedentityVerifier', accounts => {
   before(async () => {
     store = await TweedentityStore.new()
     manager = await TweedentityManager.new()
-    verifier = await TweedentityVerifier.new()
+    claimer = await TweedentityClaimer.new()
 
     await store.setManager(manager.address)
     await store.setApp('Twitter', 'twitter.com', appNickname, appId)
@@ -45,8 +45,8 @@ contract('TweedentityVerifier', accounts => {
 
   it('should authorize the manager to handle the store', async () => {
     const verifierLevel = (await manager.verifierLevel()).valueOf()
-    await manager.authorize(verifier.address, verifierLevel)
-    assert.equal(await manager.authorized(verifier.address), verifierLevel)
+    await manager.authorize(claimer.address, verifierLevel)
+    assert.equal(await manager.authorized(claimer.address), verifierLevel)
   })
 
   it('should revert trying to verify an account before setting the store', async () => {
@@ -55,7 +55,7 @@ contract('TweedentityVerifier', accounts => {
     const gasLimit = 30e4
 
     await assertRevert(
-      verifier.verifyAccountOwnership(
+      claimer.claimOwnership(
         appNickname,
         tweet.id,
         gasPrice,
@@ -68,9 +68,9 @@ contract('TweedentityVerifier', accounts => {
 
   })
 
-  it('should set the manager in the verifier', async () => {
-    await verifier.setManager(manager.address)
-    assert.equal(await verifier.managerAddress(), manager.address)
+  it('should set the manager in the claimer', async () => {
+    await claimer.setManager(manager.address)
+    assert.equal(await claimer.managerAddress(), manager.address)
   })
 
   it('should revert if the tweet id is empty', async () => {
@@ -78,7 +78,7 @@ contract('TweedentityVerifier', accounts => {
     const gasPrice = 4e9
     const gasLimit = 20e4
 
-    await assertRevert(verifier.verifyAccountOwnership(
+    await assertRevert(claimer.claimOwnership(
       appNickname,
       '',
       21e9,
@@ -93,9 +93,9 @@ contract('TweedentityVerifier', accounts => {
   it('should call Oraclize, recover the signature from the tweet and verify that it is correct', async () => {
 
     const gasPrice = 4e9
-    const gasLimit = 18e4
+    const gasLimit = 17e4
 
-    await verifier.verifyAccountOwnership(
+    await claimer.claimOwnership(
       appNickname,
       tweet.id,
       gasPrice,
@@ -106,7 +106,7 @@ contract('TweedentityVerifier', accounts => {
         gas: 270e3
       })
 
-    // const result = await eventWatcher.watch(verifier, {
+    // const result = await eventWatcher.watch(claimer, {
     //   event: 'OwnershipConfirmed',
     //   args: {
     //     addr: accounts[1]
@@ -130,9 +130,6 @@ contract('TweedentityVerifier', accounts => {
     }
 
     assert.isTrue(ok)
-
-    // waits before executing more test, to avoid crashing ganache-cli
-    wait(2)
 
   })
 
