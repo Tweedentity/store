@@ -1,8 +1,16 @@
 pragma solidity ^0.4.18;
 
-// File: contracts/TweedentityManagerInterfaceCompact.sol
+// File: contracts/TweedentityManagerInterfaceMinimal.sol
 
-contract TweedentityManagerInterfaceCompact {
+/**
+ * @title TweedentityManagerInterfaceMinimal
+ * @author Francesco Sullo <francesco@sullo.co>
+ * @dev It store the tweedentities related to the app
+ */
+
+
+contract TweedentityManagerInterfaceMinimal  /** 1.0.0 */
+{
 
   function isSettable(uint _id, string _nickname)
   external
@@ -56,23 +64,21 @@ contract Ownable {
 
 // File: contracts/TweedentityStore.sol
 
-/** Tweedentity 0.0.0 */
-
 /**
  * @title TweedentityStore
  * @author Francesco Sullo <francesco@sullo.co>
  * @dev It store the tweedentities related to the app
  */
 
-contract TweedentityStore
+
+
+contract TweedentityStore /** 1.0.0 */
 is Ownable
 {
 
-  string public versionDate = "2018-06-06";
-
   uint public identities;
 
-  TweedentityManagerInterfaceCompact public manager;
+  TweedentityManagerInterfaceMinimal public manager;
   address public managerAddress;
 
   struct Uid {
@@ -135,6 +141,10 @@ is Ownable
   // config
 
 
+  /**
+  * @dev Sets the manager
+  * @param _address Manager's address
+  */
   function setManager(
     address _address
   )
@@ -143,10 +153,17 @@ is Ownable
   {
     require(_address != address(0));
     managerAddress = _address;
-    manager = TweedentityManagerInterfaceCompact(_address);
+    manager = TweedentityManagerInterfaceMinimal(_address);
   }
 
 
+  /**
+  * @dev Sets the app
+  * @param _name Name (e.g. Twitter)
+  * @param _domain Domain (e.g. twitter.com)
+  * @param _nickname Nickname (e.g. twitter)
+  * @param _id ID (e.g. 1)
+  */
   function setApp(
     string _name,
     string _domain,
@@ -249,10 +266,10 @@ is Ownable
 
 
   /**
-   * @dev Remove a tweedentity
+   * @dev Unset a tweedentity
    * @param _address The address of the wallet
    */
-  function removeIdentity(
+  function unsetIdentity(
     address _address
   )
   external
@@ -429,8 +446,6 @@ is Ownable
 
 // File: contracts/TweedentityManager.sol
 
-/** Tweedentity 0.0.0 */
-
 /**
  * @title TweedentityManager
  * @author Francesco Sullo <francesco@sullo.co>
@@ -438,11 +453,11 @@ is Ownable
  * adding more logic to the simple logic of the store
  */
 
-contract TweedentityManager
-is TweedentityManagerInterfaceCompact, Ownable
-{
 
-  string public versionDate = "2018-06-06";
+
+contract TweedentityManager /** 1.0.0 */
+is TweedentityManagerInterfaceMinimal, Ownable
+{
 
   struct Store {
     TweedentityStore store;
@@ -488,6 +503,11 @@ is TweedentityManagerInterfaceCompact, Ownable
   // config
 
 
+  /**
+   * @dev Sets a store to be used by the manager
+   * @param _appNickname The nickname of the app for which the store's been configured
+   * @param _address The address of the store
+   */
   function setAStore(
     string _appNickname,
     address _address
@@ -513,6 +533,11 @@ is TweedentityManagerInterfaceCompact, Ownable
   }
 
 
+  /**
+   * @dev Tells to a store if id and nickname are available
+   * @param _id The id of the store
+   * @param _nickname The nickname of the store
+   */
   function isSettable(
     uint _id,
     string _nickname
@@ -525,6 +550,10 @@ is TweedentityManagerInterfaceCompact, Ownable
   }
 
 
+  /**
+   * @dev Sets the claimer which will verify the ownership and call to set a tweedentity
+   * @param _address Address of the claimer
+   */
   function setClaimer(
     address _address
   )
@@ -536,15 +565,20 @@ is TweedentityManagerInterfaceCompact, Ownable
   }
 
 
+  /**
+   * @dev Sets a wallet as customer service to perform emergency removal of wrong, abused, squatted tweedentities (due, for example, to hacking of the Twitter account)
+   * @param _address The customer service wallet
+   * @param _status The status (true is set, false is unset)
+   */
   function setCustomerService(
     address _address,
-    bool status
+    bool _status
   )
   public
   onlyOwner
   {
     require(_address != 0x0);
-    customerService[_address] = status;
+    customerService[_address] = _status;
     bool found;
     for (uint i = 0; i < customerServiceAddress.length; i++) {
       if (customerServiceAddress[i] == _address) {
@@ -652,6 +686,10 @@ is TweedentityManagerInterfaceCompact, Ownable
   // getters
 
 
+  /**
+   * @dev Gets the app-id associated to a nickname
+   * @param _nickname The nickname of a configured app
+   */
   function getAppId(
     string _nickname
   )
@@ -662,6 +700,10 @@ is TweedentityManagerInterfaceCompact, Ownable
   }
 
 
+  /**
+   * @dev Allows other contracts to check if a store is set
+   * @param _nickname The nickname of a configured app
+   */
   function getIsStoreSet(
     string _nickname
   )
@@ -671,15 +713,21 @@ is TweedentityManagerInterfaceCompact, Ownable
   }
 
 
+  /**
+   * @dev Return a numeric code about the upgradability of a couple wallet-uid in a certain app
+   * @param _appId The id of the app
+   * @param _address The address of the wallet
+   * @param _uid The user-id
+   */
   function getUpgradability(
-    uint _id,
+    uint _appId,
     address _address,
     string _uid
   )
   external
   constant returns (uint)
   {
-    TweedentityStore _store = __getStore(_id);
+    TweedentityStore _store = __getStore(_appId);
     if (!_store.isUpgradable(_address, _uid)) {
       return notUpgradableInStore;
     }
@@ -698,6 +746,12 @@ is TweedentityManagerInterfaceCompact, Ownable
   // primary methods
 
 
+  /**
+   * @dev Sets a new identity
+   * @param _appId The id of the app
+   * @param _address The address of the wallet
+   * @param _uid The user-id
+   */
   function setIdentity(
     uint _appId,
     address _address,
@@ -719,7 +773,12 @@ is TweedentityManagerInterfaceCompact, Ownable
   }
 
 
-  function removeIdentity(
+  /**
+   * @dev Unsets an existent identity
+   * @param _appId The id of the app
+   * @param _address The address of the wallet
+   */
+  function unsetIdentity(
     uint _appId,
     address _address
   )
@@ -728,10 +787,14 @@ is TweedentityManagerInterfaceCompact, Ownable
   isStoreSet(_appId)
   {
     TweedentityStore _store = __getStore(_appId);
-    _store.removeIdentity(_address);
+    _store.unsetIdentity(_address);
   }
 
 
+  /**
+   * @dev Allow the sender to unset its existent identity
+   * @param _appId The id of the app
+   */
   function removeMyIdentity(
     uint _appId
   )
@@ -739,10 +802,14 @@ is TweedentityManagerInterfaceCompact, Ownable
   isStoreSet(_appId)
   {
     TweedentityStore _store = __getStore(_appId);
-    _store.removeIdentity(msg.sender);
+    _store.unsetIdentity(msg.sender);
   }
 
 
+  /**
+   * @dev Update the minimum time before allowing a wallet to update its data
+   * @param _newMinimumTime The new minimum time in seconds
+   */
   function changeMinimumTimeBeforeUpdate(
     uint _newMinimumTime
   )

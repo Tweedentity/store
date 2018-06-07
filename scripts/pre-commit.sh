@@ -1,10 +1,19 @@
 #!/usr/bin/env bash
 
-truffle test
+if [[ -n "$SKIP_TEST" ]]
+then
 
-if [ $? -ne 0 ]; then
- echo "Tests must pass before commit!"
- exit 1
+   echo "Skipping tests"
+
+else
+
+    truffle test
+
+    if [ $? -ne 0 ]; then
+        echo "Tests must pass before commit!"
+        exit 1
+    fi
+
 fi
 
 npm run flatten

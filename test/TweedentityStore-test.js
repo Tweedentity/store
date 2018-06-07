@@ -115,7 +115,7 @@ contract('TweedentityStore', accounts => {
 
     assert.isTrue(await store.isAddressSet(rita))
 
-    await store.removeIdentity(rita, {from: manager})
+    await store.unsetIdentity(rita, {from: manager})
     assert.equal(await store.getUid(rita), '')
 
   })

@@ -44,9 +44,7 @@ contract('TweedentityClaimer', accounts => {
   })
 
   it('should authorize the manager to handle the store', async () => {
-    const verifierLevel = (await manager.verifierLevel()).valueOf()
-    await manager.authorize(claimer.address, verifierLevel)
-    assert.equal(await manager.authorized(claimer.address), verifierLevel)
+    await manager.setClaimer(claimer.address)
   })
 
   it('should revert trying to verify an account before setting the store', async () => {

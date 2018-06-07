@@ -7,7 +7,6 @@ import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
 import './TweedentityManager.sol';
 
 
-/** Tweedentity 0.0.0 */
 
 /**
  * @title TweedentityClaimer
@@ -15,11 +14,11 @@ import './TweedentityManager.sol';
  * @dev It allow user to self claim ownership of a supported web app account
  */
 
-contract TweedentityClaimer
+
+
+contract TweedentityClaimer /** 1.0.0 */
 is usingOraclize, Ownable
 {
-
-  string public versionDate = "2018-06-06";
 
   string public apiUrl = "https://api.tweedentity.net/";
 

@@ -3,10 +3,9 @@ pragma solidity ^0.4.18;
 
 import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
 
-import './TweedentityManagerInterfaceCompact.sol';
+import './TweedentityManagerInterfaceMinimal.sol';
 
 
-/** Tweedentity 0.0.0 */
 
 /**
  * @title TweedentityStore
@@ -14,15 +13,15 @@ import './TweedentityManagerInterfaceCompact.sol';
  * @dev It store the tweedentities related to the app
  */
 
-contract TweedentityStore
+
+
+contract TweedentityStore /** 1.0.0 */
 is Ownable
 {
 
-  string public versionDate = "2018-06-06";
-
   uint public identities;
 
-  TweedentityManagerInterfaceCompact public manager;
+  TweedentityManagerInterfaceMinimal public manager;
   address public managerAddress;
 
   struct Uid {
@@ -85,6 +84,10 @@ is Ownable
   // config
 
 
+  /**
+  * @dev Sets the manager
+  * @param _address Manager's address
+  */
   function setManager(
     address _address
   )
@@ -93,10 +96,17 @@ is Ownable
   {
     require(_address != address(0));
     managerAddress = _address;
-    manager = TweedentityManagerInterfaceCompact(_address);
+    manager = TweedentityManagerInterfaceMinimal(_address);
   }
 
 
+  /**
+  * @dev Sets the app
+  * @param _name Name (e.g. Twitter)
+  * @param _domain Domain (e.g. twitter.com)
+  * @param _nickname Nickname (e.g. twitter)
+  * @param _id ID (e.g. 1)
+  */
   function setApp(
     string _name,
     string _domain,
@@ -199,10 +209,10 @@ is Ownable
 
 
   /**
-   * @dev Remove a tweedentity
+   * @dev Unset a tweedentity
    * @param _address The address of the wallet
    */
-  function removeIdentity(
+  function unsetIdentity(
     address _address
   )
   external
