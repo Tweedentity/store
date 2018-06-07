@@ -1,9 +1,9 @@
 var TweedentityStore = artifacts.require("./TweedentityStore")
 var TweedentityManager = artifacts.require("./TweedentityManager")
-var TweedentityVerifier = artifacts.require("./TweedentityVerifier")
+var TweedentityClaimer = artifacts.require("./TweedentityClaimer")
 
 module.exports = function(deployer) {
-  deployer.deploy(TweedentityStore)
-  deployer.deploy(TweedentityManager)
-  deployer.deploy(TweedentityVerifier)
+  // deployer.deploy(TweedentityStore)
+  // deployer.deploy(TweedentityManager)
+  deployer.deploy(TweedentityClaimer)
 }

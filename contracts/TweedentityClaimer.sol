@@ -7,19 +7,18 @@ import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
 import './TweedentityManager.sol';
 
 
-contract TweedentityVerifier is usingOraclize, Ownable {
+contract TweedentityClaimer is usingOraclize, Ownable {
 
   uint public version = 1;
 
   event VerificationStarted(
+    bytes32 oraclizeId,
     address addr,
     string appNickname,
-    string postId,
-    bytes32 oraclizeId
+    string postId
   );
 
   event VerificatioFailed(
-    address addr,
     bytes32 oraclizeId
   );
 
@@ -30,7 +29,7 @@ contract TweedentityVerifier is usingOraclize, Ownable {
 
   struct TempData {
     address sender;
-    string appNickname;
+    uint appId;
   }
 
   mapping(bytes32 => TempData) internal __tempData;
@@ -54,7 +53,7 @@ contract TweedentityVerifier is usingOraclize, Ownable {
   }
 
   // Verifies that the signature published on twitter is correct
-  function verifyAccountOwnership(
+  function claimOwnership(
     string _appNickname,
     string _pathname,
     uint _gasPrice,
@@ -82,8 +81,8 @@ contract TweedentityVerifier is usingOraclize, Ownable {
       __concat(str),
       _gasLimit
     );
-    VerificationStarted(msg.sender, _appNickname, _pathname, oraclizeID);
-    __tempData[oraclizeID] = TempData(msg.sender, _appNickname);
+    VerificationStarted(oraclizeID, msg.sender, _appNickname, _pathname);
+    __tempData[oraclizeID] = TempData(msg.sender, manager.getAppId(_appNickname));
   }
 
 
@@ -96,9 +95,9 @@ contract TweedentityVerifier is usingOraclize, Ownable {
   {
     require(msg.sender == oraclize_cbAddress());
     if (bytes(_result).length > 0) {
-      manager.setIdentity(manager.getAppId(__tempData[_oraclizeID].appNickname), __tempData[_oraclizeID].sender, _result);
+      manager.setIdentity(__tempData[_oraclizeID].appId, __tempData[_oraclizeID].sender, _result);
     } else {
-      VerificatioFailed(__tempData[_oraclizeID].sender, _oraclizeID);
+      VerificatioFailed(_oraclizeID);
     }
   }
 

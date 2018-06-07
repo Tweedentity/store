@@ -1,5 +1,5 @@
-const assertRevert = require('./helpers/assertRevert')
 const log = require('./helpers/log')
+const assertRevert = require('./helpers/assertRevert')
 
 const eventWatcher = require('./helpers/EventWatcher')
 
