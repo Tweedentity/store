@@ -2026,7 +2026,7 @@ is TweedentityManagerInterfaceMinimal, Ownable
    * @dev Allow the sender to unset its existent identity
    * @param _appId The id of the app
    */
-  function removeMyIdentity(
+  function unsetMyIdentity(
     uint _appId
   )
   external
@@ -2132,6 +2132,18 @@ is usingOraclize, Ownable
 
 
 
+  // modifiers
+
+
+  modifier isAppSet(
+    string _appNickname
+  ) {
+    require(manager.getAppId(_appNickname) > 0);
+    _;
+  }
+
+
+
   // config
 
 
@@ -2165,11 +2177,11 @@ is usingOraclize, Ownable
     uint _gasLimit
   )
   public
+  isAppSet(_appNickname)
   payable
   {
     require(bytes(_postId).length > 0);
     require(msg.value == _gasPrice * _gasLimit);
-    require(managerAddress != address(0));
 
     oraclize_setCustomGasPrice(_gasPrice);
 

@@ -64,6 +64,8 @@ contract('TweedentityStore', accounts => {
     await store.setApp('Twitter', 'twitter.com', 'twitter', 1)
     assert.equal(await store.getAppNickname(), web3.sha3('twitter'))
     assert.equal(await store.getAppId(), 1)
+
+    console.log(await store.app())
   })
 
   it('should add a new identity with uid id1 for rita', async () => {
