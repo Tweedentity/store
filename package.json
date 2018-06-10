@@ -4,6 +4,7 @@
   "description": "tweedentity",
   "dependencies": {},
   "devDependencies": {
+    "growl": "^1.10.5",
     "lodash": "^4.17.4",
     "openzeppelin-solidity": "^1.8.0",
     "sleep": "^5.1.1",
