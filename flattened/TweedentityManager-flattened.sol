@@ -795,7 +795,7 @@ is TweedentityManagerInterfaceMinimal, Ownable
    * @dev Allow the sender to unset its existent identity
    * @param _appId The id of the app
    */
-  function removeMyIdentity(
+  function unsetMyIdentity(
     uint _appId
   )
   external

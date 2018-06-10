@@ -6,6 +6,7 @@ contracts=(
 "TweedentityStore"
 "TweedentityManager"
 "TweedentityClaimer"
+"TweedentityRegistry"
 )
 
 for c in "${contracts[@]}"

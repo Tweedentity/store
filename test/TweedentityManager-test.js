@@ -254,7 +254,7 @@ contract('TweedentityManager', accounts => {
 
 
   it('should allow bob to remove their own identity', async () => {
-    await manager.removeMyIdentity(appId, {
+    await manager.unsetMyIdentity(appId, {
       from: bob
     })
     assert.equal(await store.getUid(bob), '')
