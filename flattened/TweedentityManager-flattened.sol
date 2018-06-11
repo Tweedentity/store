@@ -1,24 +1,5 @@
 pragma solidity ^0.4.18;
 
-// File: contracts/TweedentityManagerInterfaceMinimal.sol
-
-/**
- * @title TweedentityManagerInterfaceMinimal
- * @author Francesco Sullo <francesco@sullo.co>
- * @dev It store the tweedentities related to the app
- */
-
-
-interface TweedentityManagerInterfaceMinimal  /** 1.0.0 */
-{
-
-  function isSettable(uint _id, string _nickname)
-  external
-  constant
-  returns (bool);
-
-}
-
 // File: openzeppelin-solidity/contracts/ownership/Ownable.sol
 
 /**
@@ -71,14 +52,17 @@ contract Ownable {
 
 
 
-contract TweedentityStore /** 1.0.0 */
+contract TweedentityStore /** 1.0.2 */
 is Ownable
 {
 
+  uint public appId;
+  string public appNickname;
+
   uint public identities;
 
-  TweedentityManagerInterfaceMinimal public manager;
-  address public managerAddress;
+  address public manager;
+  address public newManager;
 
   struct Uid {
     string lastUid;
@@ -93,14 +77,6 @@ is Ownable
   mapping(string => Address) internal __addressByUid;
   mapping(address => Uid) internal __uidByAddress;
 
-  struct App {
-    string name;
-    string domain;
-    string nickname;
-    uint id;
-  }
-
-  App public app;
   bool public appSet;
 
 
@@ -109,13 +85,13 @@ is Ownable
 
 
   event IdentitySet(
-    address addr,
+    address indexed addr,
     string uid
   );
 
 
   event IdentityRemoved(
-    address addr,
+    address indexed addr,
     string uid
   );
 
@@ -125,12 +101,12 @@ is Ownable
 
 
   modifier onlyManager() {
-    require(msg.sender == address(manager));
+    require(msg.sender == manager || (newManager != address(0) && msg.sender == newManager));
     _;
   }
 
 
-  modifier isAppSet() {
+  modifier whenAppSet() {
     require(appSet);
     _;
   }
@@ -151,63 +127,60 @@ is Ownable
   onlyOwner
   {
     require(_address != address(0));
-    managerAddress = _address;
-    manager = TweedentityManagerInterfaceMinimal(_address);
+    manager = _address;
+  }
+
+
+  /**
+  * @dev Sets new manager
+  * @param _address New manager's address
+  */
+  function setNewManager(
+    address _address
+  )
+  external
+  onlyOwner
+  {
+    require(_address != address(0) && manager != address(0));
+    newManager = _address;
+  }
+
+
+  /**
+  * @dev Sets new manager
+  */
+  function switchManagerAndRemoveOldOne()
+  external
+  onlyOwner
+  {
+    manager = newManager;
+    newManager = address(0);
   }
 
 
   /**
   * @dev Sets the app
-  * @param _name Name (e.g. Twitter)
-  * @param _domain Domain (e.g. twitter.com)
-  * @param _nickname Nickname (e.g. twitter)
-  * @param _id ID (e.g. 1)
+  * @param _appNickname Nickname (e.g. twitter)
+  * @param _appId ID (e.g. 1)
   */
   function setApp(
-    string _name,
-    string _domain,
-    string _nickname,
-    uint _id
+    string _appNickname,
+    uint _appId
   )
   external
   onlyOwner
   {
-    require(_id > 0);
     require(!appSet);
-    require(manager.isSettable(_id, _nickname));
-    app = App(_name, _domain, _nickname, _id);
+    require(_appId > 0);
+    require(bytes(_appNickname).length > 0);
+    appId = _appId;
+    appNickname = _appNickname;
     appSet = true;
   }
 
 
+
   // helpers
-
-  /**
-   * @dev Checks if a user-id's been used
-   * @param _uid The user-id
-   */
-  function isUidSet(
-    string _uid
-  )
-  public
-  constant returns (bool)
-  {
-    return __addressByUid[_uid].lastAddress != address(0);
-  }
-
-
-  /**
-   * @dev Checks if an address's been used
-   * @param _address The address
-   */
-  function isAddressSet(
-    address _address
-  )
-  public
-  constant returns (bool)
-  {
-    return bytes(__uidByAddress[_address].lastUid).length > 0;
-  }
 
 
   /**
@@ -222,7 +195,7 @@ is Ownable
   public
   constant returns (bool)
   {
-    if (isUidSet(_uid)) {
+    if (__addressByUid[_uid].lastAddress != address(0)) {
       return keccak256(getUid(_address)) == keccak256(_uid);
     }
     return true;
@@ -244,13 +217,13 @@ is Ownable
   )
   external
   onlyManager
-  isAppSet
+  whenAppSet
   {
     require(_address != address(0));
     require(isUid(_uid));
     require(isUpgradable(_address, _uid));
 
-    if (isAddressSet(_address)) {
+    if (bytes(__uidByAddress[_address].lastUid).length > 0) {
       // if _address is associated with an oldUid,
       // this removes the association between _address and oldUid
       __addressByUid[__uidByAddress[_address].lastUid] = Address(address(0), __addressByUid[__uidByAddress[_address].lastUid].lastUpdate);
@@ -273,10 +246,10 @@ is Ownable
   )
   external
   onlyManager
-  isAppSet
+  whenAppSet
   {
     require(_address != address(0));
-    require(isAddressSet(_address));
+    require(bytes(__uidByAddress[_address].lastUid).length > 0);
 
     string memory uid = __uidByAddress[_address].lastUid;
     __uidByAddress[_address] = Uid('', __uidByAddress[_address].lastUpdate);
@@ -295,9 +268,9 @@ is Ownable
    */
   function getAppNickname()
   external
-  isAppSet
+  whenAppSet
   constant returns (bytes32) {
-    return keccak256(app.nickname);
+    return keccak256(appNickname);
   }
 
 
@@ -306,9 +279,9 @@ is Ownable
    */
   function getAppId()
   external
-  isAppSet
+  whenAppSet
   constant returns (uint) {
-    return app.id;
+    return appId;
   }
 
 
@@ -443,6 +416,52 @@ is Ownable
 
 }
 
+// File: openzeppelin-solidity/contracts/lifecycle/Pausable.sol
+
+/**
+ * @title Pausable
+ * @dev Base contract which allows children to implement an emergency stop mechanism.
+ */
+contract Pausable is Ownable {
+  event Pause();
+  event Unpause();
+
+  bool public paused = false;
+
+
+  /**
+   * @dev Modifier to make a function callable only when the contract is not paused.
+   */
+  modifier whenNotPaused() {
+    require(!paused);
+    _;
+  }
+
+  /**
+   * @dev Modifier to make a function callable only when the contract is paused.
+   */
+  modifier whenPaused() {
+    require(paused);
+    _;
+  }
+
+  /**
+   * @dev called by the owner to pause, triggers stopped state
+   */
+  function pause() onlyOwner whenNotPaused public {
+    paused = true;
+    Pause();
+  }
+
+  /**
+   * @dev called by the owner to unpause, returns to normal state
+   */
+  function unpause() onlyOwner whenPaused public {
+    paused = false;
+    Unpause();
+  }
+}
+
 // File: contracts/TweedentityManager.sol
 
 /**
@@ -453,9 +472,8 @@ is Ownable
  */
 
 
-
-contract TweedentityManager /** 1.0.0 */
-is TweedentityManagerInterfaceMinimal, Ownable
+contract TweedentityManager /** 1.0.2 */
+is Pausable
 {
 
   struct Store {
@@ -470,28 +488,24 @@ is TweedentityManagerInterfaceMinimal, Ownable
   mapping(string => uint) private __appIds;
 
   address public claimer;
+  address public newClaimer;
   mapping(address => bool) public customerService;
-  address[] public customerServiceAddress;
+  address[] private __customerServiceAddress;
 
   uint public upgradable = 0;
   uint public notUpgradableInStore = 1;
   uint public addressNotUpgradable = 2;
 
-  uint public minimumTimeBeforeUpdate = 1 days;
+  uint public minimumTimeBeforeUpdate = 1 hours;
 
 
 
   // events
 
 
-  event MinimumTimeBeforeUpdateChanged(
-    uint time
-  );
-
-
   event IdentityNotUpgradable(
-    string nickname,
-    address addr,
+    string appNickname,
+    address indexed addr,
     string uid
   );
 
@@ -509,7 +523,7 @@ is TweedentityManagerInterfaceMinimal, Ownable
     string _appNickname,
     address _address
   )
-  external
+  public
   onlyOwner
   {
     require(bytes(_appNickname).length > 0);
@@ -531,23 +545,6 @@ is TweedentityManagerInterfaceMinimal, Ownable
 
 
   /**
-   * @dev Tells to a store if id and nickname are available
-   * @param _id The id of the store
-   * @param _nickname The nickname of the store
-   */
-  function isSettable(
-    uint _id,
-    string _nickname
-  )
-  external
-  constant
-  returns (bool)
-  {
-    return __appIds[_nickname] == 0 && appNicknames32[_id] == 0x0;
-  }
-
-
-  /**
    * @dev Sets the claimer which will verify the ownership and call to set a tweedentity
    * @param _address Address of the claimer
    */
@@ -559,6 +556,33 @@ is TweedentityManagerInterfaceMinimal, Ownable
   {
     require(_address != 0x0);
     claimer = _address;
+  }
+
+
+  /**
+   * @dev Sets a new claimer during updates
+   * @param _address Address of the new claimer
+   */
+  function setNewClaimer(
+    address _address
+  )
+  public
+  onlyOwner
+  {
+    require(_address != address(0) && claimer != address(0));
+    newClaimer = _address;
+  }
+
+
+  /**
+  * @dev Sets new manager
+  */
+  function switchClaimerAndRemoveOldOne()
+  external
+  onlyOwner
+  {
+    claimer = newClaimer;
+    newClaimer = address(0);
   }
 
 
@@ -577,14 +601,14 @@ is TweedentityManagerInterfaceMinimal, Ownable
     require(_address != 0x0);
     customerService[_address] = _status;
     bool found;
-    for (uint i = 0; i < customerServiceAddress.length; i++) {
-      if (customerServiceAddress[i] == _address) {
+    for (uint i = 0; i < __customerServiceAddress.length; i++) {
+      if (__customerServiceAddress[i] == _address) {
         found = true;
         break;
       }
     }
     if (!found) {
-      customerServiceAddress.push(_address);
+      __customerServiceAddress.push(_address);
     }
   }
 
@@ -593,31 +617,22 @@ is TweedentityManagerInterfaceMinimal, Ownable
   //modifiers
 
 
-  modifier isStoreSet(
-    uint _appId
-  ) {
-    require(appNicknames32[_appId] != 0x0);
-    _;
-  }
-
-
   modifier onlyClaimer() {
-    require(msg.sender == claimer);
+    require(msg.sender == claimer || (newClaimer != address(0) && msg.sender == newClaimer));
     _;
   }
 
 
   modifier onlyCustomerService() {
-    bool ok = msg.sender == owner ? true : false;
-    if (!ok) {
-      for (uint i = 0; i < customerServiceAddress.length; i++) {
-        if (customerServiceAddress[i] == msg.sender) {
-          ok = true;
-          break;
-        }
-      }
-    }
-    require(ok);
+    require(msg.sender == owner || customerService[msg.sender] == true);
+    _;
+  }
+
+
+  modifier whenStoreSet(
+    uint _appId
+  ) {
+    require(appNicknames32[_appId] != 0x0);
     _;
   }
 
@@ -627,12 +642,12 @@ is TweedentityManagerInterfaceMinimal, Ownable
 
 
   function __getStore(
-    uint _id
+    uint _appId
   )
   internal
   constant returns (TweedentityStore)
   {
-    return __stores[_id].store;
+    return __stores[_appId].store;
   }
 
 
@@ -673,28 +688,27 @@ is TweedentityManagerInterfaceMinimal, Ownable
 
   /**
    * @dev Gets the app-id associated to a nickname
-   * @param _nickname The nickname of a configured app
+   * @param _appNickname The nickname of a configured app
    */
   function getAppId(
-    string _nickname
+    string _appNickname
   )
   external
-  constant
-  returns (uint) {
-    return __appIds[_nickname];
+  constant returns (uint) {
+    return __appIds[_appNickname];
   }
 
 
   /**
    * @dev Allows other contracts to check if a store is set
-   * @param _nickname The nickname of a configured app
+   * @param _appNickname The nickname of a configured app
    */
-  function getIsStoreSet(
-    string _nickname
+  function isStoreSet(
+    string _appNickname
   )
-  external
+  public
   constant returns (bool){
-    return __appIds[_nickname] != 0;
+    return __appIds[_appNickname] != 0;
   }
 
 
@@ -723,6 +737,29 @@ is TweedentityManagerInterfaceMinimal, Ownable
   }
 
 
+  /**
+   * @dev Returns the address of a store
+   * @param _appNickname The app nickname
+   */
+  function getStoreAddress(
+    string _appNickname
+  )
+  external
+  constant returns (address) {
+    return __stores[__appIds[_appNickname]].addr;
+  }
+
+
+  /**
+   * @dev Returns the address of any customerService account
+   */
+  function getCustomerServiceAddress()
+  external
+  constant returns (address[]) {
+    return __customerServiceAddress;
+  }
+
+
 
   // primary methods
 
@@ -740,7 +777,8 @@ is TweedentityManagerInterfaceMinimal, Ownable
   )
   external
   onlyClaimer
-  isStoreSet(_appId)
+  whenStoreSet(_appId)
+  whenNotPaused
   {
     require(_address != address(0));
 
@@ -765,7 +803,8 @@ is TweedentityManagerInterfaceMinimal, Ownable
   )
   external
   onlyCustomerService
-  isStoreSet(_appId)
+  whenStoreSet(_appId)
+  whenNotPaused
   {
     TweedentityStore _store = __getStore(_appId);
     _store.unsetIdentity(_address);
@@ -780,7 +819,8 @@ is TweedentityManagerInterfaceMinimal, Ownable
     uint _appId
   )
   external
-  isStoreSet(_appId)
+  whenStoreSet(_appId)
+  whenNotPaused
   {
     TweedentityStore _store = __getStore(_appId);
     _store.unsetIdentity(msg.sender);
@@ -798,7 +838,6 @@ is TweedentityManagerInterfaceMinimal, Ownable
   onlyOwner
   {
     minimumTimeBeforeUpdate = _newMinimumTime;
-    MinimumTimeBeforeUpdateChanged(_newMinimumTime);
   }
 
 

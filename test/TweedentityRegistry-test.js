@@ -16,12 +16,12 @@ contract('TweedentityRegistry', accounts => {
   })
 
   it('should set the store for Twitter', async () => {
-    await registry.setStore('twitter', storeTwitter)
+    await registry.setAStore('twitter', storeTwitter)
     assert.equal(await registry.getStore('twitter'), storeTwitter)
   })
 
   it('should set the store for Github', async () => {
-    await registry.setStore('github', storeGithub)
+    await registry.setAStore('github', storeGithub)
     assert.equal(await registry.getStore('github'), storeGithub)
   })
 
@@ -41,18 +41,10 @@ contract('TweedentityRegistry', accounts => {
     assert.equal(await registry.claimer(), claimer)
   })
 
-  it('should returns unready because by default it is paused', async() => {
-    await registry.setStore('twitter', storeTwitter)
-    await registry.setStore('github', storeGithub)
-    await registry.setManagerAndClaimer(manager, claimer)
-    assert.isFalse(await registry.isReady())
-  })
-
   it('should set all and be ready', async() => {
-    await registry.setStore('twitter', storeTwitter)
-    await registry.setStore('github', storeGithub)
+    await registry.setAStore('twitter', storeTwitter)
+    await registry.setAStore('github', storeGithub)
     await registry.setManagerAndClaimer(manager, claimer)
-    await registry.unpause()
     assert.isTrue(await registry.isReady())
   })
 

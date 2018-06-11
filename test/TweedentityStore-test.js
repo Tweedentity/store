@@ -3,7 +3,7 @@ const assertRevert = require('./helpers/assertRevert')
 
 const eventWatcher = require('./helpers/EventWatcher')
 
-const TweedentityStore = artifacts.require('./mocks/TweedentityStoreMock.sol')
+const TweedentityStore = artifacts.require('./TweedentityStore.sol')
 const TweedentityStoreCaller = artifacts.require('./helpers/TweedentityStoreCaller')
 
 const Wait = require('./helpers/wait')
@@ -18,13 +18,10 @@ contract('TweedentityStore', accounts => {
   let store
   let storeCaller
 
-  let owner = accounts[0]
   let manager = accounts[1]
-  let customerService = accounts[2]
   let bob = accounts[3]
   let alice = accounts[4]
   let rita = accounts[5]
-  let developer = accounts[6]
 
   let id1 = '12345'
   let id2 = '23456'
@@ -53,7 +50,7 @@ contract('TweedentityStore', accounts => {
 
   it('should authorize manager to handle the data', async () => {
     await store.setManager(manager)
-    assert.equal((await store.managerAddress()), manager)
+    assert.equal((await store.manager()), manager)
   })
 
   it('should revert trying to add a new tweedentity because the store is not declared', async () => {
@@ -61,18 +58,17 @@ contract('TweedentityStore', accounts => {
   })
 
   it('should declare the store', async () => {
-    await store.setApp('Twitter', 'twitter.com', 'twitter', 1)
+    await store.setApp('twitter', 1)
     assert.equal(await store.getAppNickname(), web3.sha3('twitter'))
     assert.equal(await store.getAppId(), 1)
   })
 
   it('should add a new identity with uid id1 for rita', async () => {
-    assert.isFalse(await store.isUidSet(id1))
+    assert.equal(await store.getAddress(id1), 0)
 
     await store.setIdentity(rita, id1, {from: manager})
     assert.equal(await store.getAddress(id1), rita)
-    assert.isTrue(await store.isUidSet(id1))
-    assert.isTrue(await store.isAddressSet(rita))
+    assert.equal(await store.getUid(rita), id1)
     assert.equal(await store.identities(), 1)
   })
 
@@ -113,8 +109,7 @@ contract('TweedentityStore', accounts => {
 
   it('should allow manager to remove the identity for rita', async () => {
 
-    assert.isTrue(await store.isAddressSet(rita))
-
+    assert.notEqual(await store.getUid(rita), 0)
     await store.unsetIdentity(rita, {from: manager})
     assert.equal(await store.getUid(rita), '')
 
@@ -124,7 +119,7 @@ contract('TweedentityStore', accounts => {
 
     await store.setIdentity(bob, id1, {from: manager})
 
-    assert.isFalse(await store.isAddressSet(rita))
+    assert.equal(await store.getUid(rita), 0)
     assert.equal(await store.getUid(bob), id1)
     assert.equal(await store.getAddress(id1), bob)
 
@@ -132,12 +127,13 @@ contract('TweedentityStore', accounts => {
 
   it('should verify that all the function callable from other contracts are actually callable', async () => {
 
-    assert.isTrue(await storeCaller.isUidSet(id1))
-    assert.isTrue(await storeCaller.isAddressSet(bob))
+    assert.equal(await storeCaller.getAddress(id1), bob)
     assert.equal(await storeCaller.getUidAsInteger(bob), 12345)
     assert.equal(await storeCaller.getAddress(id1), bob)
     assert.equal(await storeCaller.getAddressLastUpdate(bob), (await store.getAddressLastUpdate(bob)).valueOf())
     assert.equal(await storeCaller.getUidLastUpdate(id1), (await store.getUidLastUpdate(id1)).valueOf())
   })
+
+
 
 })

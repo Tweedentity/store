@@ -3,8 +3,6 @@ pragma solidity ^0.4.18;
 
 import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
 
-import './TweedentityManagerInterfaceMinimal.sol';
-
 
 
 /**
@@ -15,14 +13,17 @@ import './TweedentityManagerInterfaceMinimal.sol';
 
 
 
-contract TweedentityStore /** 1.0.0 */
+contract TweedentityStore /** 1.0.2 */
 is Ownable
 {
 
+  uint public appId;
+  string public appNickname;
+
   uint public identities;
 
-  TweedentityManagerInterfaceMinimal public manager;
-  address public managerAddress;
+  address public manager;
+  address public newManager;
 
   struct Uid {
     string lastUid;
@@ -37,14 +38,6 @@ is Ownable
   mapping(string => Address) internal __addressByUid;
   mapping(address => Uid) internal __uidByAddress;
 
-  struct App {
-    string name;
-    string domain;
-    string nickname;
-    uint id;
-  }
-
-  App public app;
   bool public appSet;
 
 
@@ -53,13 +46,13 @@ is Ownable
 
 
   event IdentitySet(
-    address addr,
+    address indexed addr,
     string uid
   );
 
 
   event IdentityRemoved(
-    address addr,
+    address indexed addr,
     string uid
   );
 
@@ -69,12 +62,12 @@ is Ownable
 
 
   modifier onlyManager() {
-    require(msg.sender == address(manager));
+    require(msg.sender == manager || (newManager != address(0) && msg.sender == newManager));
     _;
   }
 
 
-  modifier isAppSet() {
+  modifier whenAppSet() {
     require(appSet);
     _;
   }
@@ -95,63 +88,60 @@ is Ownable
   onlyOwner
   {
     require(_address != address(0));
-    managerAddress = _address;
-    manager = TweedentityManagerInterfaceMinimal(_address);
+    manager = _address;
+  }
+
+
+  /**
+  * @dev Sets new manager
+  * @param _address New manager's address
+  */
+  function setNewManager(
+    address _address
+  )
+  external
+  onlyOwner
+  {
+    require(_address != address(0) && manager != address(0));
+    newManager = _address;
+  }
+
+
+  /**
+  * @dev Sets new manager
+  */
+  function switchManagerAndRemoveOldOne()
+  external
+  onlyOwner
+  {
+    manager = newManager;
+    newManager = address(0);
   }
 
 
   /**
   * @dev Sets the app
-  * @param _name Name (e.g. Twitter)
-  * @param _domain Domain (e.g. twitter.com)
-  * @param _nickname Nickname (e.g. twitter)
-  * @param _id ID (e.g. 1)
+  * @param _appNickname Nickname (e.g. twitter)
+  * @param _appId ID (e.g. 1)
   */
   function setApp(
-    string _name,
-    string _domain,
-    string _nickname,
-    uint _id
+    string _appNickname,
+    uint _appId
   )
   external
   onlyOwner
   {
-    require(_id > 0);
     require(!appSet);
-    require(manager.isSettable(_id, _nickname));
-    app = App(_name, _domain, _nickname, _id);
+    require(_appId > 0);
+    require(bytes(_appNickname).length > 0);
+    appId = _appId;
+    appNickname = _appNickname;
     appSet = true;
   }
 
 
+
   // helpers
-
-  /**
-   * @dev Checks if a user-id's been used
-   * @param _uid The user-id
-   */
-  function isUidSet(
-    string _uid
-  )
-  public
-  constant returns (bool)
-  {
-    return __addressByUid[_uid].lastAddress != address(0);
-  }
-
-
-  /**
-   * @dev Checks if an address's been used
-   * @param _address The address
-   */
-  function isAddressSet(
-    address _address
-  )
-  public
-  constant returns (bool)
-  {
-    return bytes(__uidByAddress[_address].lastUid).length > 0;
-  }
 
 
   /**
@@ -166,7 +156,7 @@ is Ownable
   public
   constant returns (bool)
   {
-    if (isUidSet(_uid)) {
+    if (__addressByUid[_uid].lastAddress != address(0)) {
       return keccak256(getUid(_address)) == keccak256(_uid);
     }
     return true;
@@ -188,13 +178,13 @@ is Ownable
   )
   external
   onlyManager
-  isAppSet
+  whenAppSet
   {
     require(_address != address(0));
     require(isUid(_uid));
     require(isUpgradable(_address, _uid));
 
-    if (isAddressSet(_address)) {
+    if (bytes(__uidByAddress[_address].lastUid).length > 0) {
       // if _address is associated with an oldUid,
       // this removes the association between _address and oldUid
       __addressByUid[__uidByAddress[_address].lastUid] = Address(address(0), __addressByUid[__uidByAddress[_address].lastUid].lastUpdate);
@@ -217,10 +207,10 @@ is Ownable
   )
   external
   onlyManager
-  isAppSet
+  whenAppSet
   {
     require(_address != address(0));
-    require(isAddressSet(_address));
+    require(bytes(__uidByAddress[_address].lastUid).length > 0);
 
     string memory uid = __uidByAddress[_address].lastUid;
     __uidByAddress[_address] = Uid('', __uidByAddress[_address].lastUpdate);
@@ -239,9 +229,9 @@ is Ownable
    */
   function getAppNickname()
   external
-  isAppSet
+  whenAppSet
   constant returns (bytes32) {
-    return keccak256(app.nickname);
+    return keccak256(appNickname);
   }
 
 
@@ -250,9 +240,9 @@ is Ownable
    */
   function getAppId()
   external
-  isAppSet
+  whenAppSet
   constant returns (uint) {
-    return app.id;
+    return appId;
   }
 
 

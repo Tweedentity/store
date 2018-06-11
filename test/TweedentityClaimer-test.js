@@ -37,7 +37,7 @@ contract('TweedentityClaimer', accounts => {
     claimer = await TweedentityClaimer.new()
 
     await store.setManager(manager.address)
-    await store.setApp('Twitter', 'twitter.com', appNickname, appId)
+    await store.setApp(appNickname, appId)
     await manager.setAStore(appNickname, store.address)
 
     wait = (new Wait(await Counter.new())).wait

@@ -1,7 +1,7 @@
 pragma solidity ^0.4.18;
 
 
-import '../ethereum-api/oraclizeAPI.sol';
+import '../ethereum-api/oraclizeAPI_0.5.sol';
 import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
 
 import './TweedentityManager.sol';
@@ -16,7 +16,7 @@ import './TweedentityManager.sol';
 
 
 
-contract TweedentityClaimer /** 1.0.0 */
+contract TweedentityClaimer /** 1.0.2 */
 is usingOraclize, Ownable
 {
 
@@ -39,13 +39,13 @@ is usingOraclize, Ownable
 
   event VerificationStarted(
     bytes32 oraclizeId,
-    address addr,
+    address indexed addr,
     string appNickname,
     string postId
   );
 
   event VerificatioFailed(
-    bytes32 oraclizeId
+    bytes32 indexed oraclizeId
   );
 
 
@@ -53,7 +53,7 @@ is usingOraclize, Ownable
   // modifiers
 
 
-  modifier isAppSet(
+  modifier whenAppSet(
     string _appNickname
   ) {
     require(manager.getAppId(_appNickname) > 0);
@@ -95,7 +95,7 @@ is usingOraclize, Ownable
     uint _gasLimit
   )
   public
-  isAppSet(_appNickname)
+  whenAppSet(_appNickname)
   payable
   {
     require(bytes(_postId).length > 0);
@@ -180,6 +180,7 @@ is usingOraclize, Ownable
     string[6] _strings
   )
   internal
+  pure
   returns (string)
   {
     uint len = 0;
