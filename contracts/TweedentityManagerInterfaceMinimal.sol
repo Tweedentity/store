@@ -9,13 +9,12 @@ pragma solidity ^0.4.18;
  */
 
 
-contract TweedentityManagerInterfaceMinimal  /** 1.0.0 */
+interface TweedentityManagerInterfaceMinimal  /** 1.0.0 */
 {
 
   function isSettable(uint _id, string _nickname)
   external
   constant
-  returns (bool)
-  {}
+  returns (bool);
 
 }

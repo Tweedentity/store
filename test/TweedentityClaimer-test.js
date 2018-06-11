@@ -118,7 +118,7 @@ contract('TweedentityClaimer', accounts => {
     let ok = false
 
     console.log('Waiting for result')
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 16; i++) {
       wait()
       let uid = await store.getUid(accounts[1])
       if (uid == tweet.userId) {
@@ -130,5 +130,50 @@ contract('TweedentityClaimer', accounts => {
     assert.isTrue(ok)
 
   })
+
+
+  it('should call Oraclize, recover the signature from the tweet but be unable to update', async () => {
+
+    const gasPrice = 4e9
+    const gasLimit = 17e4
+
+    await claimer.claimOwnership(
+      appNickname,
+      tweet.id,
+      gasPrice,
+      gasLimit,
+      {
+        from: accounts[1],
+        value: gasPrice * gasLimit,
+        gas: 270e3
+      })
+
+    // const result = await eventWatcher.watch(claimer, {
+    //   event: 'OwnershipConfirmed',
+    //   args: {
+    //     addr: accounts[1]
+    //   },
+    //   fromBlock: web3.eth.blockNumer,
+    //   toBlock: 'latest'
+    // })
+    //
+    // assert.equal(result.args.uid, tweet.userId)
+
+    let ok = false
+
+    console.log('Waiting for result')
+    for (let i = 0; i < 16; i++) {
+      wait()
+      let uid = await store.getUid(accounts[1])
+      if (uid == tweet.userId) {
+        ok = true
+        break
+      }
+    }
+
+    assert.isTrue(ok)
+
+  })
+
 
 })

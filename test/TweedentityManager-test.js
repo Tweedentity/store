@@ -55,9 +55,7 @@ contract('TweedentityManager', accounts => {
 
     upgradable = await getValue('upgradable')
     notUpgradableInStore = await getValue('notUpgradableInStore')
-    uidNotUpgradable = await getValue('uidNotUpgradable')
     addressNotUpgradable = await getValue('addressNotUpgradable')
-    uidAndAddressNotUpgradable = await getValue('uidAndAddressNotUpgradable')
 
     wait = (new Wait(await Counter.new())).wait
   })
@@ -179,7 +177,7 @@ contract('TweedentityManager', accounts => {
     assert.equal(await manager.getUpgradability(appId, rita, id3), addressNotUpgradable)
     assert.equal(await manager.getUpgradability(appId, alice, id2), upgradable)
     assert.equal(await manager.getUpgradability(appId, alice, id1), notUpgradableInStore)
-    assert.equal(await manager.getUpgradability(appId, rita, id1), uidAndAddressNotUpgradable)
+    assert.equal(await manager.getUpgradability(appId, rita, id1), addressNotUpgradable)
 
     await wait(2)
     assert.equal(await manager.getUpgradability(appId, rita, id1), upgradable)
@@ -248,7 +246,7 @@ contract('TweedentityManager', accounts => {
 
   it('should verify that all the function callable from other contracts are actually callable', async () => {
 
-    assert.equal(await managerCaller.getUpgradability(appId, bob, id1), uidAndAddressNotUpgradable)
+    assert.equal(await managerCaller.getUpgradability(appId, bob, id1), addressNotUpgradable)
     assert.equal(await managerCaller.getUpgradability(appId, bob, id2), notUpgradableInStore)
   })
 

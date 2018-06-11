@@ -2,7 +2,7 @@
 const TweedentityRegistry = artifacts.require('./TweedentityRegistry.sol')
 
 
-contract('TweedentityClaimer', accounts => {
+contract('TweedentityRegistry', accounts => {
 
 
   let registry

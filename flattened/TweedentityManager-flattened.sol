@@ -9,14 +9,13 @@ pragma solidity ^0.4.18;
  */
 
 
-contract TweedentityManagerInterfaceMinimal  /** 1.0.0 */
+interface TweedentityManagerInterfaceMinimal  /** 1.0.0 */
 {
 
   function isSettable(uint _id, string _nickname)
   external
   constant
-  returns (bool)
-  {}
+  returns (bool);
 
 }
 
@@ -476,9 +475,7 @@ is TweedentityManagerInterfaceMinimal, Ownable
 
   uint public upgradable = 0;
   uint public notUpgradableInStore = 1;
-  uint public uidNotUpgradable = 2;
-  uint public addressNotUpgradable = 3;
-  uint public uidAndAddressNotUpgradable = 4;
+  uint public addressNotUpgradable = 2;
 
   uint public minimumTimeBeforeUpdate = 1 days;
 
@@ -643,18 +640,6 @@ is TweedentityManagerInterfaceMinimal, Ownable
   // helpers
 
 
-  function isUidUpgradable(
-    TweedentityStore _store,
-    string _uid
-  )
-  internal
-  constant returns (bool)
-  {
-    uint lastUpdate = _store.getUidLastUpdate(_uid);
-    return lastUpdate == 0 || now >= lastUpdate + minimumTimeBeforeUpdate;
-  }
-
-
   function isAddressUpgradable(
     TweedentityStore _store,
     address _address
@@ -675,7 +660,7 @@ is TweedentityManagerInterfaceMinimal, Ownable
   internal
   constant returns (bool)
   {
-    if (!_store.isUpgradable(_address, _uid) || !isAddressUpgradable(_store, _address) || !isUidUpgradable(_store, _uid)) {
+    if (!_store.isUpgradable(_address, _uid) || !isAddressUpgradable(_store, _address)) {
       return false;
     }
     return true;
@@ -730,15 +715,11 @@ is TweedentityManagerInterfaceMinimal, Ownable
     TweedentityStore _store = __getStore(_appId);
     if (!_store.isUpgradable(_address, _uid)) {
       return notUpgradableInStore;
-    }
-    if (!isAddressUpgradable(_store, _address) && !isUidUpgradable(_store, _uid)) {
-      return uidAndAddressNotUpgradable;
     } else if (!isAddressUpgradable(_store, _address)) {
       return addressNotUpgradable;
-    } else if (!isUidUpgradable(_store, _uid)) {
-      return uidNotUpgradable;
+    } else {
+      return upgradable;
     }
-    return upgradable;
   }
 
 
