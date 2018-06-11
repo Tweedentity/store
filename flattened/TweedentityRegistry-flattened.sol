@@ -152,34 +152,4 @@ is Ownable
     return totalStores > 0 && manager != address(0) && claimer != address(0);
   }
 
-
-
-  // private
-
-
-  function __concat(
-    string[6] _strings
-  )
-  internal
-  pure
-  returns (string)
-  {
-    uint len = 0;
-    uint i;
-    for (i = 0; i < _strings.length; i++) {
-      len = len + bytes(_strings[i]).length;
-    }
-    string memory str = new string(len);
-    bytes memory bstr = bytes(str);
-    uint k = 0;
-    uint j;
-    bytes memory b;
-    for (i = 0; i < _strings.length; i++) {
-      b = bytes(_strings[i]);
-      for (j = 0; j < b.length; j++) bstr[k++] = b[j];
-    }
-    return string(bstr);
-  }
-
-
 }
