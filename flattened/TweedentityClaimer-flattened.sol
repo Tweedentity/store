@@ -1,6 +1,6 @@
 pragma solidity ^0.4.18;
 
-// File: ethereum-api/oraclizeAPI.sol
+// File: ethereum-api/oraclizeAPI_0.5.sol
 
 // <ORACLIZE_API>
 /*
@@ -32,27 +32,27 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-pragma solidity >=0.4.1 <=0.4.20;// Incompatible compiler version... please select one stated within pragma solidity or use different oraclizeAPI version
+// This api is currently targeted at 0.4.18, please import oraclizeAPI_pre0.4.sol or oraclizeAPI_0.4 where necessary
+
+pragma solidity >=0.4.18 <=0.4.20;// Incompatible compiler version... please select one stated within pragma solidity or use different oraclizeAPI version
 
 contract OraclizeI {
     address public cbAddress;
-    function query(uint _timestamp, string _datasource, string _arg) payable returns (bytes32 _id);
-    function query_withGasLimit(uint _timestamp, string _datasource, string _arg, uint _gaslimit) payable returns (bytes32 _id);
-    function query2(uint _timestamp, string _datasource, string _arg1, string _arg2) payable returns (bytes32 _id);
-    function query2_withGasLimit(uint _timestamp, string _datasource, string _arg1, string _arg2, uint _gaslimit) payable returns (bytes32 _id);
-    function queryN(uint _timestamp, string _datasource, bytes _argN) payable returns (bytes32 _id);
-    function queryN_withGasLimit(uint _timestamp, string _datasource, bytes _argN, uint _gaslimit) payable returns (bytes32 _id);
-    function getPrice(string _datasource) returns (uint _dsprice);
-    function getPrice(string _datasource, uint gaslimit) returns (uint _dsprice);
-    function useCoupon(string _coupon);
-    function setProofType(byte _proofType);
-    function setConfig(bytes32 _config);
-    function setCustomGasPrice(uint _gasPrice);
-    function randomDS_getSessionPubKeyHash() returns(bytes32);
+    function query(uint _timestamp, string _datasource, string _arg) external payable returns (bytes32 _id);
+    function query_withGasLimit(uint _timestamp, string _datasource, string _arg, uint _gaslimit) external payable returns (bytes32 _id);
+    function query2(uint _timestamp, string _datasource, string _arg1, string _arg2) public payable returns (bytes32 _id);
+    function query2_withGasLimit(uint _timestamp, string _datasource, string _arg1, string _arg2, uint _gaslimit) external payable returns (bytes32 _id);
+    function queryN(uint _timestamp, string _datasource, bytes _argN) public payable returns (bytes32 _id);
+    function queryN_withGasLimit(uint _timestamp, string _datasource, bytes _argN, uint _gaslimit) external payable returns (bytes32 _id);
+    function getPrice(string _datasource) public returns (uint _dsprice);
+    function getPrice(string _datasource, uint gaslimit) public returns (uint _dsprice);
+    function setProofType(byte _proofType) external;
+    function setCustomGasPrice(uint _gasPrice) external;
+    function randomDS_getSessionPubKeyHash() external constant returns(bytes32);
 }
 
 contract OraclizeAddrResolverI {
-    function getAddress() returns (address _addr);
+    function getAddress() public returns (address _addr);
 }
 
 /*
@@ -89,7 +89,7 @@ library Buffer {
         uint capacity;
     }
 
-    function init(buffer memory buf, uint capacity) internal constant {
+    function init(buffer memory buf, uint capacity) internal pure {
         if(capacity % 32 != 0) capacity += 32 - (capacity % 32);
         // Allocate space for the buffer data
         buf.capacity = capacity;
@@ -100,13 +100,13 @@ library Buffer {
         }
     }
 
-    function resize(buffer memory buf, uint capacity) private constant {
+    function resize(buffer memory buf, uint capacity) private pure {
         bytes memory oldbuf = buf.buf;
         init(buf, capacity);
         append(buf, oldbuf);
     }
 
-    function max(uint a, uint b) private constant returns(uint) {
+    function max(uint a, uint b) private pure returns(uint) {
         if(a > b) {
             return a;
         }
@@ -120,7 +120,7 @@ library Buffer {
      * @param data The data to append.
      * @return The original buffer.
      */
-    function append(buffer memory buf, bytes data) internal constant returns(buffer memory) {
+    function append(buffer memory buf, bytes data) internal pure returns(buffer memory) {
         if(data.length + buf.buf.length > buf.capacity) {
             resize(buf, max(buf.capacity, data.length) * 2);
         }
@@ -167,7 +167,7 @@ library Buffer {
      * @param data The data to append.
      * @return The original buffer.
      */
-    function append(buffer memory buf, uint8 data) internal constant {
+    function append(buffer memory buf, uint8 data) internal pure {
         if(buf.buf.length + 1 > buf.capacity) {
             resize(buf, buf.capacity * 2);
         }
@@ -192,7 +192,7 @@ library Buffer {
      * @param data The data to append.
      * @return The original buffer.
      */
-    function appendInt(buffer memory buf, uint data, uint len) internal constant returns(buffer memory) {
+    function appendInt(buffer memory buf, uint data, uint len) internal pure returns(buffer memory) {
         if(len + buf.buf.length > buf.capacity) {
             resize(buf, max(buf.capacity, len) * 2);
         }
@@ -224,37 +224,33 @@ library CBOR {
     uint8 private constant MAJOR_TYPE_MAP = 5;
     uint8 private constant MAJOR_TYPE_CONTENT_FREE = 7;
 
-    function shl8(uint8 x, uint8 y) private constant returns (uint8) {
-        return x * (2 ** y);
-    }
-
-    function encodeType(Buffer.buffer memory buf, uint8 major, uint value) private constant {
+    function encodeType(Buffer.buffer memory buf, uint8 major, uint value) private pure {
         if(value <= 23) {
-            buf.append(uint8(shl8(major, 5) | value));
+            buf.append(uint8((major << 5) | value));
         } else if(value <= 0xFF) {
-            buf.append(uint8(shl8(major, 5) | 24));
+            buf.append(uint8((major << 5) | 24));
             buf.appendInt(value, 1);
         } else if(value <= 0xFFFF) {
-            buf.append(uint8(shl8(major, 5) | 25));
+            buf.append(uint8((major << 5) | 25));
             buf.appendInt(value, 2);
         } else if(value <= 0xFFFFFFFF) {
-            buf.append(uint8(shl8(major, 5) | 26));
+            buf.append(uint8((major << 5) | 26));
             buf.appendInt(value, 4);
         } else if(value <= 0xFFFFFFFFFFFFFFFF) {
-            buf.append(uint8(shl8(major, 5) | 27));
+            buf.append(uint8((major << 5) | 27));
             buf.appendInt(value, 8);
         }
     }
 
-    function encodeIndefiniteLengthType(Buffer.buffer memory buf, uint8 major) private constant {
-        buf.append(uint8(shl8(major, 5) | 31));
+    function encodeIndefiniteLengthType(Buffer.buffer memory buf, uint8 major) private pure {
+        buf.append(uint8((major << 5) | 31));
     }
 
-    function encodeUInt(Buffer.buffer memory buf, uint value) internal constant {
+    function encodeUInt(Buffer.buffer memory buf, uint value) internal pure {
         encodeType(buf, MAJOR_TYPE_INT, value);
     }
 
-    function encodeInt(Buffer.buffer memory buf, int value) internal constant {
+    function encodeInt(Buffer.buffer memory buf, int value) internal pure {
         if(value >= 0) {
             encodeType(buf, MAJOR_TYPE_INT, uint(value));
         } else {
@@ -262,25 +258,25 @@ library CBOR {
         }
     }
 
-    function encodeBytes(Buffer.buffer memory buf, bytes value) internal constant {
+    function encodeBytes(Buffer.buffer memory buf, bytes value) internal pure {
         encodeType(buf, MAJOR_TYPE_BYTES, value.length);
         buf.append(value);
     }
 
-    function encodeString(Buffer.buffer memory buf, string value) internal constant {
+    function encodeString(Buffer.buffer memory buf, string value) internal pure {
         encodeType(buf, MAJOR_TYPE_STRING, bytes(value).length);
         buf.append(bytes(value));
     }
 
-    function startArray(Buffer.buffer memory buf) internal constant {
+    function startArray(Buffer.buffer memory buf) internal pure {
         encodeIndefiniteLengthType(buf, MAJOR_TYPE_ARRAY);
     }
 
-    function startMap(Buffer.buffer memory buf) internal constant {
+    function startMap(Buffer.buffer memory buf) internal pure {
         encodeIndefiniteLengthType(buf, MAJOR_TYPE_MAP);
     }
 
-    function endSequence(Buffer.buffer memory buf) internal constant {
+    function endSequence(Buffer.buffer memory buf) internal pure {
         encodeIndefiniteLengthType(buf, MAJOR_TYPE_CONTENT_FREE);
     }
 }
@@ -319,11 +315,14 @@ contract usingOraclize {
     }
     modifier coupon(string code){
         oraclize = OraclizeI(OAR.getAddress());
-        oraclize.useCoupon(code);
         _;
     }
 
     function oraclize_setNetwork(uint8 networkID) internal returns(bool){
+      return oraclize_setNetwork();
+      networkID; // silence the warning and remain backwards compatible
+    }
+    function oraclize_setNetwork() internal returns(bool){
         if (getCodeSize(0x1d3B2638a7cC9f2CB3D298A3DA7a90B67E5506ed)>0){ //mainnet
             OAR = OraclizeAddrResolverI(0x1d3B2638a7cC9f2CB3D298A3DA7a90B67E5506ed);
             oraclize_setNetworkName("eth_mainnet");
@@ -359,14 +358,12 @@ contract usingOraclize {
         return false;
     }
 
-    function __callback(bytes32 myid, string result) {
+    function __callback(bytes32 myid, string result) public {
         __callback(myid, result, new bytes(0));
     }
-    function __callback(bytes32 myid, string result, bytes proof) {
-    }
-
-    function oraclize_useCoupon(string code) oraclizeAPI internal {
-        oraclize.useCoupon(code);
+    function __callback(bytes32 myid, string result, bytes proof) public {
+      return;
+      myid; result; proof; // Silence compiler warnings
     }
 
     function oraclize_getPrice(string datasource) oraclizeAPI internal returns (uint){
@@ -759,9 +756,6 @@ contract usingOraclize {
     function oraclize_setCustomGasPrice(uint gasPrice) oraclizeAPI internal {
         return oraclize.setCustomGasPrice(gasPrice);
     }
-    function oraclize_setConfig(bytes32 config) oraclizeAPI internal {
-        return oraclize.setConfig(config);
-    }
 
     function oraclize_randomDS_getSessionPubKeyHash() oraclizeAPI internal returns (bytes32){
         return oraclize.randomDS_getSessionPubKeyHash();
@@ -773,7 +767,7 @@ contract usingOraclize {
         }
     }
 
-    function parseAddr(string _a) internal returns (address){
+    function parseAddr(string _a) internal pure returns (address){
         bytes memory tmp = bytes(_a);
         uint160 iaddr = 0;
         uint160 b1;
@@ -793,7 +787,7 @@ contract usingOraclize {
         return address(iaddr);
     }
 
-    function strCompare(string _a, string _b) internal returns (int) {
+    function strCompare(string _a, string _b) internal pure returns (int) {
         bytes memory a = bytes(_a);
         bytes memory b = bytes(_b);
         uint minLength = a.length;
@@ -811,7 +805,7 @@ contract usingOraclize {
             return 0;
     }
 
-    function indexOf(string _haystack, string _needle) internal returns (int) {
+    function indexOf(string _haystack, string _needle) internal pure returns (int) {
         bytes memory h = bytes(_haystack);
         bytes memory n = bytes(_needle);
         if(h.length < 1 || n.length < 1 || (n.length > h.length))
@@ -838,7 +832,7 @@ contract usingOraclize {
         }
     }
 
-    function strConcat(string _a, string _b, string _c, string _d, string _e) internal returns (string) {
+    function strConcat(string _a, string _b, string _c, string _d, string _e) internal pure returns (string) {
         bytes memory _ba = bytes(_a);
         bytes memory _bb = bytes(_b);
         bytes memory _bc = bytes(_c);
@@ -855,25 +849,25 @@ contract usingOraclize {
         return string(babcde);
     }
 
-    function strConcat(string _a, string _b, string _c, string _d) internal returns (string) {
+    function strConcat(string _a, string _b, string _c, string _d) internal pure returns (string) {
         return strConcat(_a, _b, _c, _d, "");
     }
 
-    function strConcat(string _a, string _b, string _c) internal returns (string) {
+    function strConcat(string _a, string _b, string _c) internal pure returns (string) {
         return strConcat(_a, _b, _c, "", "");
     }
 
-    function strConcat(string _a, string _b) internal returns (string) {
+    function strConcat(string _a, string _b) internal pure returns (string) {
         return strConcat(_a, _b, "", "", "");
     }
 
     // parseInt
-    function parseInt(string _a) internal returns (uint) {
+    function parseInt(string _a) internal pure returns (uint) {
         return parseInt(_a, 0);
     }
 
     // parseInt(parseFloat*10^_b)
-    function parseInt(string _a, uint _b) internal returns (uint) {
+    function parseInt(string _a, uint _b) internal pure returns (uint) {
         bytes memory bresult = bytes(_a);
         uint mint = 0;
         bool decimals = false;
@@ -891,7 +885,7 @@ contract usingOraclize {
         return mint;
     }
 
-    function uint2str(uint i) internal returns (string){
+    function uint2str(uint i) internal pure returns (string){
         if (i == 0) return "0";
         uint j = i;
         uint len;
@@ -909,7 +903,7 @@ contract usingOraclize {
     }
 
     using CBOR for Buffer.buffer;
-    function stra2cbor(string[] arr) internal constant returns (bytes) {
+    function stra2cbor(string[] arr) internal pure returns (bytes) {
         Buffer.buffer memory buf;
         Buffer.init(buf, 1024);
         buf.startArray();
@@ -920,7 +914,7 @@ contract usingOraclize {
         return buf.buf;
     }
 
-    function ba2cbor(bytes[] arr) internal constant returns (bytes) {
+    function ba2cbor(bytes[] arr) internal pure returns (bytes) {
         Buffer.buffer memory buf;
         Buffer.init(buf, 1024);
         buf.startArray();
@@ -936,13 +930,13 @@ contract usingOraclize {
         oraclize_network_name = _network_name;
     }
 
-    function oraclize_getNetworkName() internal returns (string) {
+    function oraclize_getNetworkName() internal view returns (string) {
         return oraclize_network_name;
     }
 
     function oraclize_newRandomDSQuery(uint _delay, uint _nbytes, uint _customGasLimit) internal returns (bytes32){
-        if ((_nbytes == 0)||(_nbytes > 32)) throw;
-	// Convert from seconds to ledger timer ticks
+        require((_nbytes > 0) && (_nbytes <= 32));
+        // Convert from seconds to ledger timer ticks
         _delay *= 10;
         bytes memory nbytes = new bytes(1);
         nbytes[0] = byte(_nbytes);
@@ -984,7 +978,7 @@ contract usingOraclize {
 
         }
 
-        oraclize_randomDS_setCommitment(queryId, sha3(delay_bytes8_left, args[1], sha256(args[0]), args[2]));
+        oraclize_randomDS_setCommitment(queryId, keccak256(delay_bytes8_left, args[1], sha256(args[0]), args[2]));
         return queryId;
     }
 
@@ -1016,10 +1010,10 @@ contract usingOraclize {
 
 
         (sigok, signer) = safer_ecrecover(tosignh, 27, sigr, sigs);
-        if (address(sha3(pubkey)) == signer) return true;
+        if (address(keccak256(pubkey)) == signer) return true;
         else {
             (sigok, signer) = safer_ecrecover(tosignh, 28, sigr, sigs);
-            return (address(sha3(pubkey)) == signer);
+            return (address(keccak256(pubkey)) == signer);
         }
     }
 
@@ -1034,7 +1028,7 @@ contract usingOraclize {
         copyBytes(proof, 3+1, 64, appkey1_pubkey, 0);
 
         bytes memory tosign2 = new bytes(1+65+32);
-        tosign2[0] = 1; //role
+        tosign2[0] = byte(1); //role
         copyBytes(proof, sig2offset-65, 65, tosign2, 1);
         bytes memory CODEHASH = hex"fd94fa71bc0ba10d39d464d0d8f465efeef0a2764e3887fcc9df41ded20f505c";
         copyBytes(CODEHASH, 0, 32, tosign2, 1+65);
@@ -1060,10 +1054,10 @@ contract usingOraclize {
 
     modifier oraclize_randomDS_proofVerify(bytes32 _queryId, string _result, bytes _proof) {
         // Step 1: the prefix has to match 'LP\x01' (Ledger Proof version 1)
-        if ((_proof[0] != "L")||(_proof[1] != "P")||(_proof[2] != 1)) throw;
+        require((_proof[0] == "L") && (_proof[1] == "P") && (_proof[2] == 1));
 
         bool proofVerified = oraclize_randomDS_proofVerify__main(_proof, _queryId, bytes(_result), oraclize_getNetworkName());
-        if (proofVerified == false) throw;
+        require(proofVerified);
 
         _;
     }
@@ -1078,10 +1072,10 @@ contract usingOraclize {
         return 0;
     }
 
-    function matchBytes32Prefix(bytes32 content, bytes prefix, uint n_random_bytes) internal returns (bool){
+    function matchBytes32Prefix(bytes32 content, bytes prefix, uint n_random_bytes) internal pure returns (bool){
         bool match_ = true;
 
-	if (prefix.length != n_random_bytes) throw;
+        require(prefix.length == n_random_bytes);
 
         for (uint256 i=0; i< n_random_bytes; i++) {
             if (content[i] != prefix[i]) match_ = false;
@@ -1096,7 +1090,7 @@ contract usingOraclize {
         uint ledgerProofLength = 3+65+(uint(proof[3+65+1])+2)+32;
         bytes memory keyhash = new bytes(32);
         copyBytes(proof, ledgerProofLength, 32, keyhash, 0);
-        if (!(sha3(keyhash) == sha3(sha256(context_name, queryId)))) return false;
+        if (!(keccak256(keyhash) == keccak256(sha256(context_name, queryId)))) return false;
 
         bytes memory sig1 = new bytes(uint(proof[ledgerProofLength+(32+8+1+32)+1])+2);
         copyBytes(proof, ledgerProofLength+(32+8+1+32), sig1.length, sig1, 0);
@@ -1104,7 +1098,7 @@ contract usingOraclize {
         // Step 3: we assume sig1 is valid (it will be verified during step 5) and we verify if 'result' is the prefix of sha256(sig1)
         if (!matchBytes32Prefix(sha256(sig1), result, uint(proof[ledgerProofLength+32+8]))) return false;
 
-        // Step 4: commitment match verification, sha3(delay, nbytes, unonce, sessionKeyHash) == commitment in storage.
+        // Step 4: commitment match verification, keccak256(delay, nbytes, unonce, sessionKeyHash) == commitment in storage.
         // This is to verify that the computed args match with the ones specified in the query.
         bytes memory commitmentSlice1 = new bytes(8+1+32);
         copyBytes(proof, ledgerProofLength+32, 8+1+32, commitmentSlice1, 0);
@@ -1114,7 +1108,7 @@ contract usingOraclize {
         copyBytes(proof, sig2offset-64, 64, sessionPubkey, 0);
 
         bytes32 sessionPubkeyHash = sha256(sessionPubkey);
-        if (oraclize_randomDS_args[queryId] == sha3(commitmentSlice1, sessionPubkeyHash)){ //unonce, nbytes and sessionKeyHash match
+        if (oraclize_randomDS_args[queryId] == keccak256(commitmentSlice1, sessionPubkeyHash)){ //unonce, nbytes and sessionKeyHash match
             delete oraclize_randomDS_args[queryId];
         } else return false;
 
@@ -1132,15 +1126,12 @@ contract usingOraclize {
         return oraclize_randomDS_sessionKeysHashVerified[sessionPubkeyHash];
     }
 
-
     // the following function has been written by Alex Beregszaszi (@axic), use it under the terms of the MIT license
-    function copyBytes(bytes from, uint fromOffset, uint length, bytes to, uint toOffset) internal returns (bytes) {
+    function copyBytes(bytes from, uint fromOffset, uint length, bytes to, uint toOffset) internal pure returns (bytes) {
         uint minLength = length + toOffset;
 
-        if (to.length < minLength) {
-            // Buffer too small
-            throw; // Should be a better way?
-        }
+        // Buffer too small
+        require(to.length >= minLength); // Should be a better way?
 
         // NOTE: the offset 32 is added to skip the `size` field of both bytes variables
         uint i = 32 + fromOffset;
@@ -1231,26 +1222,6 @@ contract usingOraclize {
 }
 // </ORACLIZE_API>
 
-// File: contracts/TweedentityManagerInterfaceMinimal.sol
-
-/**
- * @title TweedentityManagerInterfaceMinimal
- * @author Francesco Sullo <francesco@sullo.co>
- * @dev It store the tweedentities related to the app
- */
-
-
-contract TweedentityManagerInterfaceMinimal  /** 1.0.0 */
-{
-
-  function isSettable(uint _id, string _nickname)
-  external
-  constant
-  returns (bool)
-  {}
-
-}
-
 // File: openzeppelin-solidity/contracts/ownership/Ownable.sol
 
 /**
@@ -1303,14 +1274,17 @@ contract Ownable {
 
 
 
-contract TweedentityStore /** 1.0.0 */
+contract TweedentityStore /** 1.0.2 */
 is Ownable
 {
 
+  uint public appId;
+  string public appNickname;
+
   uint public identities;
 
-  TweedentityManagerInterfaceMinimal public manager;
-  address public managerAddress;
+  address public manager;
+  address public newManager;
 
   struct Uid {
     string lastUid;
@@ -1325,14 +1299,6 @@ is Ownable
   mapping(string => Address) internal __addressByUid;
   mapping(address => Uid) internal __uidByAddress;
 
-  struct App {
-    string name;
-    string domain;
-    string nickname;
-    uint id;
-  }
-
-  App public app;
   bool public appSet;
 
 
@@ -1341,13 +1307,13 @@ is Ownable
 
 
   event IdentitySet(
-    address addr,
+    address indexed addr,
     string uid
   );
 
 
   event IdentityRemoved(
-    address addr,
+    address indexed addr,
     string uid
   );
 
@@ -1357,12 +1323,12 @@ is Ownable
 
 
   modifier onlyManager() {
-    require(msg.sender == address(manager));
+    require(msg.sender == manager || (newManager != address(0) && msg.sender == newManager));
     _;
   }
 
 
-  modifier isAppSet() {
+  modifier whenAppSet() {
     require(appSet);
     _;
   }
@@ -1383,63 +1349,60 @@ is Ownable
   onlyOwner
   {
     require(_address != address(0));
-    managerAddress = _address;
-    manager = TweedentityManagerInterfaceMinimal(_address);
+    manager = _address;
+  }
+
+
+  /**
+  * @dev Sets new manager
+  * @param _address New manager's address
+  */
+  function setNewManager(
+    address _address
+  )
+  external
+  onlyOwner
+  {
+    require(_address != address(0) && manager != address(0));
+    newManager = _address;
+  }
+
+
+  /**
+  * @dev Sets new manager
+  */
+  function switchManagerAndRemoveOldOne()
+  external
+  onlyOwner
+  {
+    manager = newManager;
+    newManager = address(0);
   }
 
 
   /**
   * @dev Sets the app
-  * @param _name Name (e.g. Twitter)
-  * @param _domain Domain (e.g. twitter.com)
-  * @param _nickname Nickname (e.g. twitter)
-  * @param _id ID (e.g. 1)
+  * @param _appNickname Nickname (e.g. twitter)
+  * @param _appId ID (e.g. 1)
   */
   function setApp(
-    string _name,
-    string _domain,
-    string _nickname,
-    uint _id
+    string _appNickname,
+    uint _appId
   )
   external
   onlyOwner
   {
-    require(_id > 0);
     require(!appSet);
-    require(manager.isSettable(_id, _nickname));
-    app = App(_name, _domain, _nickname, _id);
+    require(_appId > 0);
+    require(bytes(_appNickname).length > 0);
+    appId = _appId;
+    appNickname = _appNickname;
     appSet = true;
   }
 
 
+
   // helpers
-
-  /**
-   * @dev Checks if a user-id's been used
-   * @param _uid The user-id
-   */
-  function isUidSet(
-    string _uid
-  )
-  public
-  constant returns (bool)
-  {
-    return __addressByUid[_uid].lastAddress != address(0);
-  }
-
-
-  /**
-   * @dev Checks if an address's been used
-   * @param _address The address
-   */
-  function isAddressSet(
-    address _address
-  )
-  public
-  constant returns (bool)
-  {
-    return bytes(__uidByAddress[_address].lastUid).length > 0;
-  }
 
 
   /**
@@ -1454,7 +1417,7 @@ is Ownable
   public
   constant returns (bool)
   {
-    if (isUidSet(_uid)) {
+    if (__addressByUid[_uid].lastAddress != address(0)) {
       return keccak256(getUid(_address)) == keccak256(_uid);
     }
     return true;
@@ -1476,13 +1439,13 @@ is Ownable
   )
   external
   onlyManager
-  isAppSet
+  whenAppSet
   {
     require(_address != address(0));
     require(isUid(_uid));
     require(isUpgradable(_address, _uid));
 
-    if (isAddressSet(_address)) {
+    if (bytes(__uidByAddress[_address].lastUid).length > 0) {
       // if _address is associated with an oldUid,
       // this removes the association between _address and oldUid
       __addressByUid[__uidByAddress[_address].lastUid] = Address(address(0), __addressByUid[__uidByAddress[_address].lastUid].lastUpdate);
@@ -1505,10 +1468,10 @@ is Ownable
   )
   external
   onlyManager
-  isAppSet
+  whenAppSet
   {
     require(_address != address(0));
-    require(isAddressSet(_address));
+    require(bytes(__uidByAddress[_address].lastUid).length > 0);
 
     string memory uid = __uidByAddress[_address].lastUid;
     __uidByAddress[_address] = Uid('', __uidByAddress[_address].lastUpdate);
@@ -1527,9 +1490,9 @@ is Ownable
    */
   function getAppNickname()
   external
-  isAppSet
+  whenAppSet
   constant returns (bytes32) {
-    return keccak256(app.nickname);
+    return keccak256(appNickname);
   }
 
 
@@ -1538,9 +1501,9 @@ is Ownable
    */
   function getAppId()
   external
-  isAppSet
+  whenAppSet
   constant returns (uint) {
-    return app.id;
+    return appId;
   }
 
 
@@ -1675,6 +1638,52 @@ is Ownable
 
 }
 
+// File: openzeppelin-solidity/contracts/lifecycle/Pausable.sol
+
+/**
+ * @title Pausable
+ * @dev Base contract which allows children to implement an emergency stop mechanism.
+ */
+contract Pausable is Ownable {
+  event Pause();
+  event Unpause();
+
+  bool public paused = false;
+
+
+  /**
+   * @dev Modifier to make a function callable only when the contract is not paused.
+   */
+  modifier whenNotPaused() {
+    require(!paused);
+    _;
+  }
+
+  /**
+   * @dev Modifier to make a function callable only when the contract is paused.
+   */
+  modifier whenPaused() {
+    require(paused);
+    _;
+  }
+
+  /**
+   * @dev called by the owner to pause, triggers stopped state
+   */
+  function pause() onlyOwner whenNotPaused public {
+    paused = true;
+    Pause();
+  }
+
+  /**
+   * @dev called by the owner to unpause, returns to normal state
+   */
+  function unpause() onlyOwner whenPaused public {
+    paused = false;
+    Unpause();
+  }
+}
+
 // File: contracts/TweedentityManager.sol
 
 /**
@@ -1685,9 +1694,8 @@ is Ownable
  */
 
 
-
-contract TweedentityManager /** 1.0.0 */
-is TweedentityManagerInterfaceMinimal, Ownable
+contract TweedentityManager /** 1.0.2 */
+is Pausable
 {
 
   struct Store {
@@ -1702,30 +1710,24 @@ is TweedentityManagerInterfaceMinimal, Ownable
   mapping(string => uint) private __appIds;
 
   address public claimer;
+  address public newClaimer;
   mapping(address => bool) public customerService;
-  address[] public customerServiceAddress;
+  address[] private __customerServiceAddress;
 
   uint public upgradable = 0;
   uint public notUpgradableInStore = 1;
-  uint public uidNotUpgradable = 2;
-  uint public addressNotUpgradable = 3;
-  uint public uidAndAddressNotUpgradable = 4;
+  uint public addressNotUpgradable = 2;
 
-  uint public minimumTimeBeforeUpdate = 1 days;
+  uint public minimumTimeBeforeUpdate = 1 hours;
 
 
 
   // events
 
 
-  event MinimumTimeBeforeUpdateChanged(
-    uint time
-  );
-
-
   event IdentityNotUpgradable(
-    string nickname,
-    address addr,
+    string appNickname,
+    address indexed addr,
     string uid
   );
 
@@ -1743,7 +1745,7 @@ is TweedentityManagerInterfaceMinimal, Ownable
     string _appNickname,
     address _address
   )
-  external
+  public
   onlyOwner
   {
     require(bytes(_appNickname).length > 0);
@@ -1765,23 +1767,6 @@ is TweedentityManagerInterfaceMinimal, Ownable
 
 
   /**
-   * @dev Tells to a store if id and nickname are available
-   * @param _id The id of the store
-   * @param _nickname The nickname of the store
-   */
-  function isSettable(
-    uint _id,
-    string _nickname
-  )
-  external
-  constant
-  returns (bool)
-  {
-    return __appIds[_nickname] == 0 && appNicknames32[_id] == 0x0;
-  }
-
-
-  /**
    * @dev Sets the claimer which will verify the ownership and call to set a tweedentity
    * @param _address Address of the claimer
    */
@@ -1793,6 +1778,33 @@ is TweedentityManagerInterfaceMinimal, Ownable
   {
     require(_address != 0x0);
     claimer = _address;
+  }
+
+
+  /**
+   * @dev Sets a new claimer during updates
+   * @param _address Address of the new claimer
+   */
+  function setNewClaimer(
+    address _address
+  )
+  public
+  onlyOwner
+  {
+    require(_address != address(0) && claimer != address(0));
+    newClaimer = _address;
+  }
+
+
+  /**
+  * @dev Sets new manager
+  */
+  function switchClaimerAndRemoveOldOne()
+  external
+  onlyOwner
+  {
+    claimer = newClaimer;
+    newClaimer = address(0);
   }
 
 
@@ -1811,14 +1823,14 @@ is TweedentityManagerInterfaceMinimal, Ownable
     require(_address != 0x0);
     customerService[_address] = _status;
     bool found;
-    for (uint i = 0; i < customerServiceAddress.length; i++) {
-      if (customerServiceAddress[i] == _address) {
+    for (uint i = 0; i < __customerServiceAddress.length; i++) {
+      if (__customerServiceAddress[i] == _address) {
         found = true;
         break;
       }
     }
     if (!found) {
-      customerServiceAddress.push(_address);
+      __customerServiceAddress.push(_address);
     }
   }
 
@@ -1827,31 +1839,22 @@ is TweedentityManagerInterfaceMinimal, Ownable
   //modifiers
 
 
-  modifier isStoreSet(
-    uint _appId
-  ) {
-    require(appNicknames32[_appId] != 0x0);
-    _;
-  }
-
-
   modifier onlyClaimer() {
-    require(msg.sender == claimer);
+    require(msg.sender == claimer || (newClaimer != address(0) && msg.sender == newClaimer));
     _;
   }
 
 
   modifier onlyCustomerService() {
-    bool ok = msg.sender == owner ? true : false;
-    if (!ok) {
-      for (uint i = 0; i < customerServiceAddress.length; i++) {
-        if (customerServiceAddress[i] == msg.sender) {
-          ok = true;
-          break;
-        }
-      }
-    }
-    require(ok);
+    require(msg.sender == owner || customerService[msg.sender] == true);
+    _;
+  }
+
+
+  modifier whenStoreSet(
+    uint _appId
+  ) {
+    require(appNicknames32[_appId] != 0x0);
     _;
   }
 
@@ -1861,29 +1864,17 @@ is TweedentityManagerInterfaceMinimal, Ownable
 
 
   function __getStore(
-    uint _id
+    uint _appId
   )
   internal
   constant returns (TweedentityStore)
   {
-    return __stores[_id].store;
+    return __stores[_appId].store;
   }
 
 
 
   // helpers
-
-
-  function isUidUpgradable(
-    TweedentityStore _store,
-    string _uid
-  )
-  internal
-  constant returns (bool)
-  {
-    uint lastUpdate = _store.getUidLastUpdate(_uid);
-    return lastUpdate == 0 || now >= lastUpdate + minimumTimeBeforeUpdate;
-  }
 
 
   function isAddressUpgradable(
@@ -1906,7 +1897,7 @@ is TweedentityManagerInterfaceMinimal, Ownable
   internal
   constant returns (bool)
   {
-    if (!_store.isUpgradable(_address, _uid) || !isAddressUpgradable(_store, _address) || !isUidUpgradable(_store, _uid)) {
+    if (!_store.isUpgradable(_address, _uid) || !isAddressUpgradable(_store, _address)) {
       return false;
     }
     return true;
@@ -1919,28 +1910,27 @@ is TweedentityManagerInterfaceMinimal, Ownable
 
   /**
    * @dev Gets the app-id associated to a nickname
-   * @param _nickname The nickname of a configured app
+   * @param _appNickname The nickname of a configured app
    */
   function getAppId(
-    string _nickname
+    string _appNickname
   )
   external
-  constant
-  returns (uint) {
-    return __appIds[_nickname];
+  constant returns (uint) {
+    return __appIds[_appNickname];
   }
 
 
   /**
    * @dev Allows other contracts to check if a store is set
-   * @param _nickname The nickname of a configured app
+   * @param _appNickname The nickname of a configured app
    */
-  function getIsStoreSet(
-    string _nickname
+  function isStoreSet(
+    string _appNickname
   )
-  external
+  public
   constant returns (bool){
-    return __appIds[_nickname] != 0;
+    return __appIds[_appNickname] != 0;
   }
 
 
@@ -1961,15 +1951,34 @@ is TweedentityManagerInterfaceMinimal, Ownable
     TweedentityStore _store = __getStore(_appId);
     if (!_store.isUpgradable(_address, _uid)) {
       return notUpgradableInStore;
-    }
-    if (!isAddressUpgradable(_store, _address) && !isUidUpgradable(_store, _uid)) {
-      return uidAndAddressNotUpgradable;
     } else if (!isAddressUpgradable(_store, _address)) {
       return addressNotUpgradable;
-    } else if (!isUidUpgradable(_store, _uid)) {
-      return uidNotUpgradable;
+    } else {
+      return upgradable;
     }
-    return upgradable;
+  }
+
+
+  /**
+   * @dev Returns the address of a store
+   * @param _appNickname The app nickname
+   */
+  function getStoreAddress(
+    string _appNickname
+  )
+  external
+  constant returns (address) {
+    return __stores[__appIds[_appNickname]].addr;
+  }
+
+
+  /**
+   * @dev Returns the address of any customerService account
+   */
+  function getCustomerServiceAddress()
+  external
+  constant returns (address[]) {
+    return __customerServiceAddress;
   }
 
 
@@ -1990,7 +1999,8 @@ is TweedentityManagerInterfaceMinimal, Ownable
   )
   external
   onlyClaimer
-  isStoreSet(_appId)
+  whenStoreSet(_appId)
+  whenNotPaused
   {
     require(_address != address(0));
 
@@ -2015,7 +2025,8 @@ is TweedentityManagerInterfaceMinimal, Ownable
   )
   external
   onlyCustomerService
-  isStoreSet(_appId)
+  whenStoreSet(_appId)
+  whenNotPaused
   {
     TweedentityStore _store = __getStore(_appId);
     _store.unsetIdentity(_address);
@@ -2030,7 +2041,8 @@ is TweedentityManagerInterfaceMinimal, Ownable
     uint _appId
   )
   external
-  isStoreSet(_appId)
+  whenStoreSet(_appId)
+  whenNotPaused
   {
     TweedentityStore _store = __getStore(_appId);
     _store.unsetIdentity(msg.sender);
@@ -2048,7 +2060,6 @@ is TweedentityManagerInterfaceMinimal, Ownable
   onlyOwner
   {
     minimumTimeBeforeUpdate = _newMinimumTime;
-    MinimumTimeBeforeUpdateChanged(_newMinimumTime);
   }
 
 
@@ -2098,7 +2109,7 @@ is TweedentityManagerInterfaceMinimal, Ownable
 
 
 
-contract TweedentityClaimer /** 1.0.0 */
+contract TweedentityClaimer /** 1.0.2 */
 is usingOraclize, Ownable
 {
 
@@ -2121,13 +2132,13 @@ is usingOraclize, Ownable
 
   event VerificationStarted(
     bytes32 oraclizeId,
-    address addr,
+    address indexed addr,
     string appNickname,
     string postId
   );
 
   event VerificatioFailed(
-    bytes32 oraclizeId
+    bytes32 indexed oraclizeId
   );
 
 
@@ -2135,7 +2146,7 @@ is usingOraclize, Ownable
   // modifiers
 
 
-  modifier isAppSet(
+  modifier whenAppSet(
     string _appNickname
   ) {
     require(manager.getAppId(_appNickname) > 0);
@@ -2177,7 +2188,7 @@ is usingOraclize, Ownable
     uint _gasLimit
   )
   public
-  isAppSet(_appNickname)
+  whenAppSet(_appNickname)
   payable
   {
     require(bytes(_postId).length > 0);
@@ -2262,6 +2273,7 @@ is usingOraclize, Ownable
     string[6] _strings
   )
   internal
+  pure
   returns (string)
   {
     uint len = 0;

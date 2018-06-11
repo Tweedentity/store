@@ -1,11 +1,9 @@
 pragma solidity ^0.4.18;
 
 
-import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
+import 'openzeppelin-solidity/contracts/lifecycle/Pausable.sol';
 
 import './TweedentityStore.sol';
-import './TweedentityManagerInterfaceMinimal.sol';
-
 
 
 /**
@@ -16,9 +14,8 @@ import './TweedentityManagerInterfaceMinimal.sol';
  */
 
 
-
-contract TweedentityManager /** 1.0.0 */
-is TweedentityManagerInterfaceMinimal, Ownable
+contract TweedentityManager /** 1.0.2 */
+is Pausable
 {
 
   struct Store {
@@ -33,30 +30,24 @@ is TweedentityManagerInterfaceMinimal, Ownable
   mapping(string => uint) private __appIds;
 
   address public claimer;
+  address public newClaimer;
   mapping(address => bool) public customerService;
-  address[] public customerServiceAddress;
+  address[] private __customerServiceAddress;
 
   uint public upgradable = 0;
   uint public notUpgradableInStore = 1;
-  uint public uidNotUpgradable = 2;
-  uint public addressNotUpgradable = 3;
-  uint public uidAndAddressNotUpgradable = 4;
+  uint public addressNotUpgradable = 2;
 
-  uint public minimumTimeBeforeUpdate = 1 days;
+  uint public minimumTimeBeforeUpdate = 1 hours;
 
 
 
   // events
 
 
-  event MinimumTimeBeforeUpdateChanged(
-    uint time
-  );
-
-
   event IdentityNotUpgradable(
-    string nickname,
-    address addr,
+    string appNickname,
+    address indexed addr,
     string uid
   );
 
@@ -74,7 +65,7 @@ is TweedentityManagerInterfaceMinimal, Ownable
     string _appNickname,
     address _address
   )
-  external
+  public
   onlyOwner
   {
     require(bytes(_appNickname).length > 0);
@@ -96,23 +87,6 @@ is TweedentityManagerInterfaceMinimal, Ownable
 
 
   /**
-   * @dev Tells to a store if id and nickname are available
-   * @param _id The id of the store
-   * @param _nickname The nickname of the store
-   */
-  function isSettable(
-    uint _id,
-    string _nickname
-  )
-  external
-  constant
-  returns (bool)
-  {
-    return __appIds[_nickname] == 0 && appNicknames32[_id] == 0x0;
-  }
-
-
-  /**
    * @dev Sets the claimer which will verify the ownership and call to set a tweedentity
    * @param _address Address of the claimer
    */
@@ -124,6 +98,33 @@ is TweedentityManagerInterfaceMinimal, Ownable
   {
     require(_address != 0x0);
     claimer = _address;
+  }
+
+
+  /**
+   * @dev Sets a new claimer during updates
+   * @param _address Address of the new claimer
+   */
+  function setNewClaimer(
+    address _address
+  )
+  public
+  onlyOwner
+  {
+    require(_address != address(0) && claimer != address(0));
+    newClaimer = _address;
+  }
+
+
+  /**
+  * @dev Sets new manager
+  */
+  function switchClaimerAndRemoveOldOne()
+  external
+  onlyOwner
+  {
+    claimer = newClaimer;
+    newClaimer = address(0);
   }
 
 
@@ -142,14 +143,14 @@ is TweedentityManagerInterfaceMinimal, Ownable
     require(_address != 0x0);
     customerService[_address] = _status;
     bool found;
-    for (uint i = 0; i < customerServiceAddress.length; i++) {
-      if (customerServiceAddress[i] == _address) {
+    for (uint i = 0; i < __customerServiceAddress.length; i++) {
+      if (__customerServiceAddress[i] == _address) {
         found = true;
         break;
       }
     }
     if (!found) {
-      customerServiceAddress.push(_address);
+      __customerServiceAddress.push(_address);
     }
   }
 
@@ -158,31 +159,22 @@ is TweedentityManagerInterfaceMinimal, Ownable
   //modifiers
 
 
-  modifier isStoreSet(
-    uint _appId
-  ) {
-    require(appNicknames32[_appId] != 0x0);
-    _;
-  }
-
-
   modifier onlyClaimer() {
-    require(msg.sender == claimer);
+    require(msg.sender == claimer || (newClaimer != address(0) && msg.sender == newClaimer));
     _;
   }
 
 
   modifier onlyCustomerService() {
-    bool ok = msg.sender == owner ? true : false;
-    if (!ok) {
-      for (uint i = 0; i < customerServiceAddress.length; i++) {
-        if (customerServiceAddress[i] == msg.sender) {
-          ok = true;
-          break;
-        }
-      }
-    }
-    require(ok);
+    require(msg.sender == owner || customerService[msg.sender] == true);
+    _;
+  }
+
+
+  modifier whenStoreSet(
+    uint _appId
+  ) {
+    require(appNicknames32[_appId] != 0x0);
     _;
   }
 
@@ -192,29 +184,17 @@ is TweedentityManagerInterfaceMinimal, Ownable
 
 
   function __getStore(
-    uint _id
+    uint _appId
   )
   internal
   constant returns (TweedentityStore)
   {
-    return __stores[_id].store;
+    return __stores[_appId].store;
   }
 
 
 
   // helpers
-
-
-  function isUidUpgradable(
-    TweedentityStore _store,
-    string _uid
-  )
-  internal
-  constant returns (bool)
-  {
-    uint lastUpdate = _store.getUidLastUpdate(_uid);
-    return lastUpdate == 0 || now >= lastUpdate + minimumTimeBeforeUpdate;
-  }
 
 
   function isAddressUpgradable(
@@ -237,7 +217,7 @@ is TweedentityManagerInterfaceMinimal, Ownable
   internal
   constant returns (bool)
   {
-    if (!_store.isUpgradable(_address, _uid) || !isAddressUpgradable(_store, _address) || !isUidUpgradable(_store, _uid)) {
+    if (!_store.isUpgradable(_address, _uid) || !isAddressUpgradable(_store, _address)) {
       return false;
     }
     return true;
@@ -250,28 +230,27 @@ is TweedentityManagerInterfaceMinimal, Ownable
 
   /**
    * @dev Gets the app-id associated to a nickname
-   * @param _nickname The nickname of a configured app
+   * @param _appNickname The nickname of a configured app
    */
   function getAppId(
-    string _nickname
+    string _appNickname
   )
   external
-  constant
-  returns (uint) {
-    return __appIds[_nickname];
+  constant returns (uint) {
+    return __appIds[_appNickname];
   }
 
 
   /**
    * @dev Allows other contracts to check if a store is set
-   * @param _nickname The nickname of a configured app
+   * @param _appNickname The nickname of a configured app
    */
-  function getIsStoreSet(
-    string _nickname
+  function isStoreSet(
+    string _appNickname
   )
-  external
+  public
   constant returns (bool){
-    return __appIds[_nickname] != 0;
+    return __appIds[_appNickname] != 0;
   }
 
 
@@ -292,15 +271,34 @@ is TweedentityManagerInterfaceMinimal, Ownable
     TweedentityStore _store = __getStore(_appId);
     if (!_store.isUpgradable(_address, _uid)) {
       return notUpgradableInStore;
-    }
-    if (!isAddressUpgradable(_store, _address) && !isUidUpgradable(_store, _uid)) {
-      return uidAndAddressNotUpgradable;
     } else if (!isAddressUpgradable(_store, _address)) {
       return addressNotUpgradable;
-    } else if (!isUidUpgradable(_store, _uid)) {
-      return uidNotUpgradable;
+    } else {
+      return upgradable;
     }
-    return upgradable;
+  }
+
+
+  /**
+   * @dev Returns the address of a store
+   * @param _appNickname The app nickname
+   */
+  function getStoreAddress(
+    string _appNickname
+  )
+  external
+  constant returns (address) {
+    return __stores[__appIds[_appNickname]].addr;
+  }
+
+
+  /**
+   * @dev Returns the address of any customerService account
+   */
+  function getCustomerServiceAddress()
+  external
+  constant returns (address[]) {
+    return __customerServiceAddress;
   }
 
 
@@ -321,7 +319,8 @@ is TweedentityManagerInterfaceMinimal, Ownable
   )
   external
   onlyClaimer
-  isStoreSet(_appId)
+  whenStoreSet(_appId)
+  whenNotPaused
   {
     require(_address != address(0));
 
@@ -346,7 +345,8 @@ is TweedentityManagerInterfaceMinimal, Ownable
   )
   external
   onlyCustomerService
-  isStoreSet(_appId)
+  whenStoreSet(_appId)
+  whenNotPaused
   {
     TweedentityStore _store = __getStore(_appId);
     _store.unsetIdentity(_address);
@@ -361,7 +361,8 @@ is TweedentityManagerInterfaceMinimal, Ownable
     uint _appId
   )
   external
-  isStoreSet(_appId)
+  whenStoreSet(_appId)
+  whenNotPaused
   {
     TweedentityStore _store = __getStore(_appId);
     _store.unsetIdentity(msg.sender);
@@ -379,7 +380,6 @@ is TweedentityManagerInterfaceMinimal, Ownable
   onlyOwner
   {
     minimumTimeBeforeUpdate = _newMinimumTime;
-    MinimumTimeBeforeUpdateChanged(_newMinimumTime);
   }
 
 

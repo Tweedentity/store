@@ -12,8 +12,10 @@ const TweedentityManagerCaller = artifacts.require('./helpers/TweedentityManager
 
 contract('TweedentityManager', accounts => {
 
-  let store
+  let twitterStore
+  let githubStore
   let manager
+  let newManager
   let managerCaller
 
   let claimer = accounts[1]
@@ -27,15 +29,17 @@ contract('TweedentityManager', accounts => {
   let id2 = '2'
   let id3 = '3'
   let id4 = '4'
+  let id5 = '5'
 
-  let appNickname = 'twitter'
-  let appId = 1
+  let twitterNickname = 'twitter'
+  let twitterId = 1
+
+  let githubNickname = 'github'
+  let githubId = 2
 
   let upgradable
   let notUpgradableInStore
-  let uidNotUpgradable
   let addressNotUpgradable
-  let uidAndAddressNotUpgradable
 
   let wait
 
@@ -44,20 +48,24 @@ contract('TweedentityManager', accounts => {
   }
 
   before(async () => {
-    store = await TweedentityStore.new()
+    twitterStore = await TweedentityStore.new()
+    githubStore = await TweedentityStore.new()
+
     manager = await TweedentityManager.new()
+
     managerCaller = await TweedentityManagerCaller.new()
 
-    await store.setManager(manager.address)
-    await store.setApp('Twitter', 'twitter.com', appNickname, appId)
+    await twitterStore.setManager(manager.address)
+    await twitterStore.setApp(twitterNickname, twitterId)
+
+    await githubStore.setManager(manager.address)
+    await githubStore.setApp(githubNickname, githubId)
 
     await managerCaller.setManager(manager.address)
 
     upgradable = await getValue('upgradable')
     notUpgradableInStore = await getValue('notUpgradableInStore')
-    uidNotUpgradable = await getValue('uidNotUpgradable')
     addressNotUpgradable = await getValue('addressNotUpgradable')
-    uidAndAddressNotUpgradable = await getValue('uidAndAddressNotUpgradable')
 
     wait = (new Wait(await Counter.new())).wait
   })
@@ -65,42 +73,49 @@ contract('TweedentityManager', accounts => {
   it('should configure the manager', async () => {
 
     await manager.setClaimer(claimer)
+    assert.equal(await manager.claimer(), claimer)
     await manager.setCustomerService(customerService, true)
+    const customerServiceAddress = (await manager.getCustomerServiceAddress()).valueOf()
+    assert.isTrue(customerServiceAddress[0] == customerService)
 
   })
 
-  it('should see that the store has not been set', async () => {
-    assert.isFalse(await manager.getIsStoreSet(appNickname))
+  it('should see that the twitterStore has not been set', async () => {
+    assert.isFalse(await manager.isStoreSet(twitterNickname))
   })
 
-  it('should set the store', async () => {
-    await manager.setAStore(appNickname, store.address)
-    assert.isTrue(await manager.getIsStoreSet(appNickname))
-    assert.equal(await store.managerAddress(), manager.address)
+  it('should set the twitterStore', async () => {
+    assert.equal(await manager.getAppId(twitterNickname), 0)
+    assert.isFalse(await manager.isStoreSet(twitterNickname))
+    await manager.setAStore(twitterNickname, twitterStore.address)
+    await manager.setAStore(githubNickname, githubStore.address)
+    assert.isTrue(await manager.isStoreSet(twitterNickname))
+    assert.equal(await twitterStore.manager(), manager.address)
+    assert.equal(await manager.getStoreAddress(twitterNickname), twitterStore.address)
   })
 
   it('should revert trying to add a new tweedentity', async () => {
-    await assertRevert(manager.setIdentity(appId, rita, id1))
+    await assertRevert(manager.setIdentity(twitterId, rita, id1))
   })
 
   it('should add a new identity with uid id1 for rita', async () => {
-    assert.isFalse(await store.isUidSet(id1))
+    assert.equal(await twitterStore.getAddress(id1), 0)
+    assert.equal(await twitterStore.getUid(rita), 0)
 
-    await manager.setIdentity(appId, rita, id1, {
+    await manager.setIdentity(twitterId, rita, id1, {
       from: claimer
     })
-    assert.equal(await store.getAddress(id1), rita)
-    assert.isTrue(await store.isUidSet(id1))
-    assert.isTrue(await store.isAddressSet(rita))
+    assert.equal(await twitterStore.getAddress(id1), rita)
+    assert.equal(await twitterStore.getUid(rita), id1)
   })
 
   it('should show that minimumTimeBeforeUpdate is 1 days', async () => {
-    assert.equal(await manager.minimumTimeBeforeUpdate(), 86400)
+    assert.equal(await manager.minimumTimeBeforeUpdate(), 3600)
   })
 
   it('should refuse trying to update rita with the uid id2', async () => {
 
-    manager.setIdentity(appId, rita, id2, {
+    manager.setIdentity(twitterId, rita, id2, {
       from: claimer
     })
 
@@ -116,9 +131,9 @@ contract('TweedentityManager', accounts => {
     assert.equal(result.args.uid, id2)
   })
 
-  it('should revert trying to associate accounts[mark to uid id3 using a not authorized owner', async () => {
+  it('should revert trying to associate mark to uid id3 using a not authorized owner', async () => {
 
-    await assertRevert(manager.setIdentity(appId, mark, id3))
+    await assertRevert(manager.setIdentity(twitterId, mark, id3))
 
   })
 
@@ -134,9 +149,9 @@ contract('TweedentityManager', accounts => {
 
   it('should refuse trying to associate bob with id1 since this is associated w/ rita', async () => {
 
-    assert.equal(await store.getUid(rita), id1)
+    assert.equal(await twitterStore.getUid(rita), id1)
 
-    manager.setIdentity(appId, bob, id1, {
+    manager.setIdentity(twitterId, bob, id1, {
       from: claimer
     })
 
@@ -154,11 +169,11 @@ contract('TweedentityManager', accounts => {
   })
 
   it('should associate again id1 to rita', async () => {
-    manager.setIdentity(appId, rita, id1, {
+    manager.setIdentity(twitterId, rita, id1, {
       from: claimer
     })
 
-    const result = await eventWatcher.watch(store, {
+    const result = await eventWatcher.watch(twitterStore, {
       event: 'IdentitySet',
       args: {
         addr: rita
@@ -171,94 +186,155 @@ contract('TweedentityManager', accounts => {
   })
 
   it('should check upgradabilities', async () => {
-    await manager.setIdentity(appId, mark, id4, {
+    await manager.setIdentity(twitterId, mark, id4, {
       from: claimer
     })
 
-    assert.equal(await manager.getUpgradability(appId, rita, id4), notUpgradableInStore)
-    assert.equal(await manager.getUpgradability(appId, rita, id3), addressNotUpgradable)
-    assert.equal(await manager.getUpgradability(appId, alice, id2), upgradable)
-    assert.equal(await manager.getUpgradability(appId, alice, id1), notUpgradableInStore)
-    assert.equal(await manager.getUpgradability(appId, rita, id1), uidAndAddressNotUpgradable)
+    assert.equal(await manager.getUpgradability(twitterId, rita, id4), notUpgradableInStore)
+    assert.equal(await manager.getUpgradability(twitterId, rita, id3), addressNotUpgradable)
+    assert.equal(await manager.getUpgradability(twitterId, alice, id2), upgradable)
+    assert.equal(await manager.getUpgradability(twitterId, alice, id1), notUpgradableInStore)
+    assert.equal(await manager.getUpgradability(twitterId, rita, id1), addressNotUpgradable)
 
     await wait(2)
-    assert.equal(await manager.getUpgradability(appId, rita, id1), upgradable)
-    assert.equal(await manager.getUpgradability(appId, rita, id2), upgradable)
-    assert.equal(await manager.getUpgradability(appId, rita, id4), notUpgradableInStore)
+    assert.equal(await manager.getUpgradability(twitterId, rita, id1), upgradable)
+    assert.equal(await manager.getUpgradability(twitterId, rita, id2), upgradable)
+    assert.equal(await manager.getUpgradability(twitterId, rita, id4), notUpgradableInStore)
 
   })
 
   it('should associate after a second rita with the uid id2', async () => {
 
-    assert.equal(await store.getAddress(id2), 0)
+    assert.equal(await twitterStore.getAddress(id2), 0)
 
-    await manager.setIdentity(appId, rita, id2, {
+    await manager.setIdentity(twitterId, rita, id2, {
       from: claimer
     })
-    assert.equal(await store.getUid(rita), id2)
+    assert.equal(await twitterStore.getUid(rita), id2)
 
   })
 
   it('should be able to reverse after 2 seconds', async () => {
     await wait(2)
-    // assert.isTrue(await manager.isUidUpgradable(store, id1))
 
-    await manager.setIdentity(appId, rita, id1, {
+    await manager.setIdentity(twitterId, rita, id1, {
       from: claimer
     })
-    // assert.isFalse(await manager.isUidUpgradable(store,id1))
-    assert.equal(await store.getUid(rita), id1)
+    assert.equal(await twitterStore.getUid(rita), id1)
   })
 
   it('should associate id2 to alice', async () => {
-    await manager.setIdentity(appId, alice, id2, {
+    await manager.setIdentity(twitterId, alice, id2, {
       from: claimer
     })
-    assert.equal(await store.getUid(alice), id2)
+    assert.equal(await twitterStore.getUid(alice), id2)
   })
 
   it('should return rita if searching for id1 and viceversa', async () => {
-    assert.equal(await store.getAddress(id1), rita)
-    assert.equal(await store.getUid(rita), id1)
+    assert.equal(await twitterStore.getAddress(id1), rita)
+    assert.equal(await twitterStore.getUid(rita), id1)
   })
 
   it('should allow customerService to remove the identity for rita', async () => {
 
-    assert.isTrue(await store.isAddressSet(rita))
+    assert.notEqual(await twitterStore.getUid(rita), 0)
 
-    await manager.unsetIdentity(appId, rita, {
+    await manager.unsetIdentity(twitterId, rita, {
       from: customerService
     })
-    assert.equal(await store.getUid(rita), '')
-    assert.isFalse(await store.isAddressSet(rita))
+    assert.equal(await twitterStore.getUid(rita), '')
+    assert.equal(await twitterStore.getUid(rita), 0)
   })
 
   it('should allow bob to be associated to id1 after 2 seconds', async () => {
 
     await wait(2)
 
-    await manager.setIdentity(appId, bob, id1, {
+    await manager.setIdentity(twitterId, bob, id1, {
       from: claimer
     })
 
-    assert.equal(await store.getUid(bob), id1)
-    assert.equal(await store.getAddress(id1), bob)
+    assert.equal(await twitterStore.getUid(bob), id1)
+    assert.equal(await twitterStore.getAddress(id1), bob)
 
   })
 
   it('should verify that all the function callable from other contracts are actually callable', async () => {
 
-    assert.equal(await managerCaller.getUpgradability(appId, bob, id1), uidAndAddressNotUpgradable)
-    assert.equal(await managerCaller.getUpgradability(appId, bob, id2), notUpgradableInStore)
+    assert.equal(await managerCaller.getUpgradability(twitterId, bob, id1), addressNotUpgradable)
+    assert.equal(await managerCaller.getUpgradability(twitterId, bob, id2), notUpgradableInStore)
   })
 
 
   it('should allow bob to remove their own identity', async () => {
-    await manager.unsetMyIdentity(appId, {
+    await manager.unsetMyIdentity(twitterId, {
       from: bob
     })
-    assert.equal(await store.getUid(bob), '')
-    assert.equal(await store.getAddress(id1), 0)
+    assert.equal(await twitterStore.getUid(bob), '')
+    assert.equal(await twitterStore.getAddress(id1), 0)
   })
+
+  it('should update the system using newManager instead of the current manager', async () => {
+    newManager = await TweedentityManager.new()
+    assert.isFalse(await newManager.isStoreSet(twitterNickname))
+
+    await newManager.setAStore(twitterNickname, twitterStore.address)
+    assert.equal(await newManager.getStoreAddress(twitterNickname), twitterStore.address)
+
+    await newManager.setAStore(githubNickname, githubStore.address)
+    assert.equal(await newManager.getStoreAddress(githubNickname), githubStore.address)
+
+    await twitterStore.setNewManager(newManager.address)
+    assert.equal(await twitterStore.newManager(), newManager.address)
+
+    await githubStore.setNewManager(newManager.address)
+    assert.equal(await githubStore.newManager(), newManager.address)
+
+    assert.equal(await newManager.claimer(), 0)
+
+    await newManager.setClaimer(claimer)
+    assert.equal(await newManager.claimer(), claimer)
+
+    await newManager.changeMinimumTimeBeforeUpdate(1)
+  })
+
+  it('should revert trying to set a new tweedentity using manager', async () => {
+    await assertRevert(manager.setIdentity(twitterId, bob, id1))
+  })
+
+  it('should allow bob to be associated to github/id1 after 2 seconds using newManager', async () => {
+
+    await wait(2)
+
+    await newManager.setIdentity(githubId, bob, id1, {
+      from: claimer
+    })
+
+    assert.equal(await githubStore.getUid(bob), id1)
+    assert.equal(await githubStore.getAddress(id1), bob)
+
+  })
+
+  it('should allow bob to be associated to github/id5 after 2 seconds using previous manager', async () => {
+
+    await wait(2)
+
+    await manager.setIdentity(githubId, bob, id5, {
+      from: claimer
+    })
+
+    assert.equal(await githubStore.getUid(bob), id5)
+    assert.equal(await githubStore.getAddress(id5), bob)
+
+  })
+
+  it('should switch between old and new manager', async () => {
+
+    await githubStore.switchManagerAndRemoveOldOne()
+    assert.equal(await githubStore.manager(), newManager.address)
+    assert.equal(await githubStore.newManager(), 0)
+
+  })
+
 
 })

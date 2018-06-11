@@ -1,7 +1,7 @@
 pragma solidity ^0.4.18;
 
-import 'openzeppelin-solidity/contracts/lifecycle/Pausable.sol';
 
+import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
 
 
 /**
@@ -11,41 +11,48 @@ import 'openzeppelin-solidity/contracts/lifecycle/Pausable.sol';
  */
 
 
-contract TweedentityRegistry  /** 1.0.0 */
-is Pausable
+contract TweedentityRegistry  /** 1.0.2 */
+is Ownable
 {
-
-  function TweedentityRegistry()
-  public
-  {
-    paused = true;
-  }
 
   uint public totalStores;
   mapping (bytes32 => address) public stores;
+
   address public manager;
   address public claimer;
 
+  bytes32 public managerKey = keccak256("manager");
+  bytes32 public claimerKey = keccak256("claimer");
+  bytes32 public storeKey = keccak256("store");
+
+  event ContractRegistered(
+    bytes32 indexed key,
+    string spec,
+    address addr
+  );
+
 
   function setManager(
-    address _address
+    address _manager
   )
   external
   onlyOwner
   {
-    require(_address != 0x0);
-    manager = _address;
+    require(_manager != address(0));
+    manager = _manager;
+    ContractRegistered(managerKey, "", _manager);
   }
 
 
   function setClaimer(
-    address _address
+    address _claimer
   )
   external
   onlyOwner
   {
-    require(_address != 0x0);
-    claimer = _address;
+    require(_claimer != address(0));
+    claimer = _claimer;
+    ContractRegistered(claimerKey, "", _claimer);
   }
 
 
@@ -56,25 +63,28 @@ is Pausable
   external
   onlyOwner
   {
-    require(_manager != 0x0);
-    require(_claimer != 0x0);
+    require(_manager != address(0));
+    require(_claimer != address(0));
     manager = _manager;
     claimer = _claimer;
+    ContractRegistered(managerKey, "", _manager);
+    ContractRegistered(claimerKey, "", _claimer);
   }
 
 
-  function setStore(
+  function setAStore(
     string _appNickname,
-    address _address
+    address _store
   )
   external
   onlyOwner
   {
-    require(_address != 0x0);
+    require(_store != address(0));
     if (getStore(_appNickname) == address(0)) {
       totalStores++;
     }
-    stores[keccak256(_appNickname)] = _address;
+    stores[keccak256(_appNickname)] = _store;
+    ContractRegistered(storeKey, _appNickname, _store);
   }
 
 
@@ -99,7 +109,36 @@ is Pausable
   external
   constant returns(bool)
   {
-    return totalStores > 0 && manager != address(0) && claimer != address(0) && !paused;
+    return totalStores > 0 && manager != address(0) && claimer != address(0);
+  }
+
+
+
+  // private
+
+
+  function __concat(
+    string[6] _strings
+  )
+  internal
+  pure
+  returns (string)
+  {
+    uint len = 0;
+    uint i;
+    for (i = 0; i < _strings.length; i++) {
+      len = len + bytes(_strings[i]).length;
+    }
+    string memory str = new string(len);
+    bytes memory bstr = bytes(str);
+    uint k = 0;
+    uint j;
+    bytes memory b;
+    for (i = 0; i < _strings.length; i++) {
+      b = bytes(_strings[i]);
+      for (j = 0; j < b.length; j++) bstr[k++] = b[j];
+    }
+    return string(bstr);
   }
 
 
