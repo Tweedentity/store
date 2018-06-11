@@ -71,7 +71,7 @@ is usingOraclize, Ownable
   public
   onlyOwner
   {
-    require(_address != 0x0);
+    require(_address != address(0));
     managerAddress = _address;
     manager = TweedentityManager(_address);
   }
