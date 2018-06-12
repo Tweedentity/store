@@ -104,6 +104,8 @@ contract('TweedentityClaimer', accounts => {
         gas: 270e3
       })
 
+    log(await claimer.gasRemained())
+
     // const result = await eventWatcher.watch(claimer, {
     //   event: 'OwnershipConfirmed',
     //   args: {

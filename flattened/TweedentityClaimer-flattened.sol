@@ -1477,7 +1477,7 @@ is Ownable
     __uidByAddress[_address] = Uid('', __uidByAddress[_address].lastUpdate);
     __addressByUid[uid] = Address(address(0), __addressByUid[uid].lastUpdate);
     identities--;
-    IdentityRemoved(_address, uid);
+    IdentityUnset(_address, uid);
   }
 
 
@@ -1776,7 +1776,7 @@ is Pausable
   public
   onlyOwner
   {
-    require(_address != 0x0);
+    require(_address != address(0));
     claimer = _address;
   }
 
@@ -1820,7 +1820,7 @@ is Pausable
   public
   onlyOwner
   {
-    require(_address != 0x0);
+    require(_address != address(0));
     customerService[_address] = _status;
     bool found;
     for (uint i = 0; i < __customerServiceAddress.length; i++) {
@@ -2164,7 +2164,7 @@ is usingOraclize, Ownable
   public
   onlyOwner
   {
-    require(_address != 0x0);
+    require(_address != address(0));
     managerAddress = _address;
     manager = TweedentityManager(_address);
   }

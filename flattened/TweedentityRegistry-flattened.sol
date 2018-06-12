@@ -44,6 +44,12 @@ contract Ownable {
 
 // File: contracts/TweedentityRegistry.sol
 
+contract Pausable {
+
+  bool public paused;
+}
+
+
 /**
  * @title TweedentityRegistry
  * @author Francesco Sullo <francesco@sullo.co>
@@ -149,7 +155,8 @@ is Ownable
   external
   constant returns(bool)
   {
-    return totalStores > 0 && manager != address(0) && claimer != address(0);
+    Pausable pausable = Pausable(manager);
+    return totalStores > 0 && manager != address(0) && claimer != address(0) && pausable.paused() == false;
   }
 
 }

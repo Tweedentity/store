@@ -255,7 +255,7 @@ is Ownable
     __uidByAddress[_address] = Uid('', __uidByAddress[_address].lastUpdate);
     __addressByUid[uid] = Address(address(0), __addressByUid[uid].lastUpdate);
     identities--;
-    IdentityRemoved(_address, uid);
+    IdentityUnset(_address, uid);
   }
 
 

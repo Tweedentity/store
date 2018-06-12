@@ -96,7 +96,7 @@ is Pausable
   public
   onlyOwner
   {
-    require(_address != 0x0);
+    require(_address != address(0));
     claimer = _address;
   }
 
@@ -140,7 +140,7 @@ is Pausable
   public
   onlyOwner
   {
-    require(_address != 0x0);
+    require(_address != address(0));
     customerService[_address] = _status;
     bool found;
     for (uint i = 0; i < __customerServiceAddress.length; i++) {
