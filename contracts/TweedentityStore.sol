@@ -1,7 +1,7 @@
 pragma solidity ^0.4.18;
 
 
-import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
+import 'openzeppelin-solidity/contracts/ownership/HasNoEther.sol';
 
 
 
@@ -14,7 +14,7 @@ import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
 
 
 contract TweedentityStore /** 1.0.2 */
-is Ownable
+is HasNoEther
 {
 
   uint public appId;

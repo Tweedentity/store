@@ -2,6 +2,7 @@ pragma solidity ^0.4.18;
 
 
 import 'openzeppelin-solidity/contracts/lifecycle/Pausable.sol';
+import 'openzeppelin-solidity/contracts/ownership/HasNoEther.sol';
 
 import './TweedentityStore.sol';
 
@@ -15,7 +16,7 @@ import './TweedentityStore.sol';
 
 
 contract TweedentityManager /** 1.0.2 */
-is Pausable
+is Pausable, HasNoEther
 {
 
   struct Store {

@@ -2,7 +2,7 @@ pragma solidity ^0.4.18;
 
 
 import '../ethereum-api/oraclizeAPI_0.5.sol';
-import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
+import 'openzeppelin-solidity/contracts/ownership/HasNoEther.sol';
 
 import './TweedentityManager.sol';
 
@@ -17,7 +17,7 @@ import './TweedentityManager.sol';
 
 
 contract TweedentityClaimer /** 1.0.2 */
-is usingOraclize, Ownable
+is usingOraclize, HasNoEther
 {
 
   string public apiUrl = "https://api.tweedentity.net/";
@@ -99,7 +99,7 @@ is usingOraclize, Ownable
   payable
   {
     require(bytes(_postId).length > 0);
-    require(msg.value == _gasPrice * _gasLimit);
+    require(msg.value >= _gasPrice * _gasLimit);
 
     oraclize_setCustomGasPrice(_gasPrice);
 
