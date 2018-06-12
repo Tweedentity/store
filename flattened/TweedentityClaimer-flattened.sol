@@ -1312,7 +1312,7 @@ is Ownable
   );
 
 
-  event IdentityRemoved(
+  event IdentityUnset(
     address indexed addr,
     string uid
   );
