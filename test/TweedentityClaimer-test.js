@@ -44,7 +44,9 @@ contract('TweedentityClaimer', accounts => {
   })
 
   it('should authorize the manager to handle the store', async () => {
+    assert.equal(await claimer.owner(), accounts[0])
     await manager.setClaimer(claimer.address)
+    assert.equal(await manager.claimer(), claimer.address)
   })
 
   it('should revert trying to verify an account before setting the store', async () => {
@@ -90,6 +92,7 @@ contract('TweedentityClaimer', accounts => {
 
   it('should call Oraclize, recover the signature from the tweet and verify that it is correct', async () => {
 
+
     const gasPrice = 4e9
     const gasLimit = 17e4
 
@@ -104,37 +107,30 @@ contract('TweedentityClaimer', accounts => {
         gas: 270e3
       })
 
-    log(await claimer.gasRemained())
+    let timerId = setInterval(() => {
+      console.log('Waiting for result')
+    }, 1000)
 
-    // const result = await eventWatcher.watch(claimer, {
-    //   event: 'OwnershipConfirmed',
-    //   args: {
-    //     addr: accounts[1]
-    //   },
-    //   fromBlock: web3.eth.blockNumer,
-    //   toBlock: 'latest'
-    // })
-    //
-    // assert.equal(result.args.uid, tweet.userId)
+    const result = await eventWatcher.watch(store, {
+      event: 'IdentitySet',
+      args: {},
+      fromBlock: web3.eth.blockNumer,
+      toBlock: 'latest'
+    })
 
-    let ok = false
-
-    console.log('Waiting for result')
-    for (let i = 0; i < 16; i++) {
-      wait()
-      let uid = await store.getUid(accounts[1])
-      if (uid == tweet.userId) {
-        ok = true
-        break
-      }
-    }
-
-    assert.isTrue(ok)
+    clearTimeout(timerId)
+    assert.isTrue(typeof result !== 'undefined')
 
   })
 
+  it('should allow accounts[1] to unset its identity', async () => {
 
-  it('should call Oraclize, recover the signature from the tweet but be unable to update', async () => {
+    await manager.unsetMyIdentity(1, {from: accounts[1]})
+    assert.equal(await store.getUid(accounts[1]), '')
+
+  })
+
+  it('should call Oraclize, recover the signature from the tweet but be unable to update because the identity is not upgradable', async () => {
 
     const gasPrice = 4e9
     const gasLimit = 17e4
@@ -146,34 +142,32 @@ contract('TweedentityClaimer', accounts => {
       gasLimit,
       {
         from: accounts[1],
-        value: gasPrice * gasLimit,
+        value: gasPrice * gasLimit * 100,
         gas: 270e3
       })
 
-    // const result = await eventWatcher.watch(claimer, {
-    //   event: 'OwnershipConfirmed',
-    //   args: {
-    //     addr: accounts[1]
-    //   },
-    //   fromBlock: web3.eth.blockNumer,
-    //   toBlock: 'latest'
-    // })
-    //
-    // assert.equal(result.args.uid, tweet.userId)
+    let timerId = setInterval(() => {
+      console.log('Waiting for result')
+    }, 1000)
 
-    let ok = false
+    const result = await eventWatcher.watch(manager, {
+      event: 'IdentityNotUpgradable',
+      args: {},
+      fromBlock: web3.eth.blockNumer,
+      toBlock: 'latest'
+    })
+    clearTimeout(timerId)
+    assert.isTrue(typeof result !== 'undefined')
 
-    console.log('Waiting for result')
-    for (let i = 0; i < 16; i++) {
-      wait()
-      let uid = await store.getUid(accounts[1])
-      if (uid == tweet.userId) {
-        ok = true
-        break
-      }
-    }
 
-    assert.isTrue(ok)
+  })
+
+  it('should recover ether sent to the contract by mistake', async () => {
+
+    const balanceBefore = (await web3.eth.getBalance(accounts[0])).valueOf()
+    await claimer.reclaimEther()
+    const balanceAfter = (await web3.eth.getBalance(accounts[0])).valueOf()
+    assert.isTrue(balanceAfter > balanceBefore)
 
   })
 

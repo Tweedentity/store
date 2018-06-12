@@ -1,7 +1,7 @@
 pragma solidity ^0.4.18;
 
 
-import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
+import 'openzeppelin-solidity/contracts/ownership/HasNoEther.sol';
 
 
 contract Pausable {
@@ -17,9 +17,11 @@ contract Pausable {
  */
 
 
-contract TweedentityRegistry  /** 1.0.2 */
-is Ownable
+contract TweedentityRegistry
+is HasNoEther
 {
+
+  string public version = "1.3.0";
 
   uint public totalStores;
   mapping (bytes32 => address) public stores;
