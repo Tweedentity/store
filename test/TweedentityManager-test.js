@@ -2,6 +2,8 @@ const assertRevert = require('./helpers/assertRevert')
 const log = require('./helpers/log')
 const eventWatcher = require('./helpers/EventWatcher')
 
+const TwitterUidChecker = artifacts.require('./TwitterUidChecker.sol')
+const RedditUidChecker = artifacts.require('./RedditUidChecker.sol')
 const TweedentityStore = artifacts.require('./TweedentityStore.sol')
 const TweedentityManager = artifacts.require('./TweedentityManager.sol')
 
@@ -12,8 +14,10 @@ const TweedentityManagerCaller = artifacts.require('./helpers/TweedentityManager
 
 contract('TweedentityManager', accounts => {
 
+  let twitterChecker
+  let redditChecker
   let twitterStore
-  let githubStore
+  let redditStore
   let manager
   let newManager
   let managerCaller
@@ -31,11 +35,13 @@ contract('TweedentityManager', accounts => {
   let id4 = '4'
   let id5 = '5'
 
+  let rid1 = 'abc'
+
   let twitterNickname = 'twitter'
   let twitterId = 1
 
-  let githubNickname = 'github'
-  let githubId = 2
+  let redditNickname = 'reddit'
+  let redditId = 2
 
   let upgradable
   let notUpgradableInStore
@@ -48,18 +54,21 @@ contract('TweedentityManager', accounts => {
   }
 
   before(async () => {
+    twitterChecker = await TwitterUidChecker.new()
     twitterStore = await TweedentityStore.new()
-    githubStore = await TweedentityStore.new()
+
+    redditChecker = await RedditUidChecker.new()
+    redditStore = await TweedentityStore.new()
 
     manager = await TweedentityManager.new()
 
     managerCaller = await TweedentityManagerCaller.new()
 
     await twitterStore.setManager(manager.address)
-    await twitterStore.setApp(twitterNickname, twitterId)
+    await twitterStore.setApp(twitterNickname, twitterId, twitterChecker.address)
 
-    await githubStore.setManager(manager.address)
-    await githubStore.setApp(githubNickname, githubId)
+    await redditStore.setManager(manager.address)
+    await redditStore.setApp(redditNickname, redditId, redditChecker.address)
 
     await managerCaller.setManager(manager.address)
 
@@ -88,7 +97,6 @@ contract('TweedentityManager', accounts => {
     assert.equal(await manager.getAppId(twitterNickname), 0)
     assert.isFalse(await manager.isStoreSet(twitterNickname))
     await manager.setAStore(twitterNickname, twitterStore.address)
-    await manager.setAStore(githubNickname, githubStore.address)
     assert.isTrue(await manager.isStoreSet(twitterNickname))
     assert.equal(await twitterStore.manager(), manager.address)
     assert.equal(await manager.getStoreAddress(twitterNickname), twitterStore.address)
@@ -281,14 +289,8 @@ contract('TweedentityManager', accounts => {
     await newManager.setAStore(twitterNickname, twitterStore.address)
     assert.equal(await newManager.getStoreAddress(twitterNickname), twitterStore.address)
 
-    await newManager.setAStore(githubNickname, githubStore.address)
-    assert.equal(await newManager.getStoreAddress(githubNickname), githubStore.address)
-
     await twitterStore.setNewManager(newManager.address)
     assert.equal(await twitterStore.newManager(), newManager.address)
-
-    await githubStore.setNewManager(newManager.address)
-    assert.equal(await githubStore.newManager(), newManager.address)
 
     assert.equal(await newManager.claimer(), 0)
 
@@ -298,41 +300,36 @@ contract('TweedentityManager', accounts => {
     await newManager.changeMinimumTimeBeforeUpdate(1)
   })
 
+  it('should switch between old and new manager', async () => {
+
+    await twitterStore.switchManagerAndRemoveOldOne()
+    assert.equal(await twitterStore.manager(), newManager.address)
+    assert.equal(await twitterStore.newManager(), 0)
+
+  })
+
   it('should revert trying to set a new tweedentity using manager', async () => {
     await assertRevert(manager.setIdentity(twitterId, bob, id1))
   })
 
-  it('should allow bob to be associated to github/id1 after 2 seconds using newManager', async () => {
+  it('should set the redditStore', async () => {
+    assert.equal(await manager.getAppId(redditNickname), 0)
+    assert.isFalse(await manager.isStoreSet(redditNickname))
+    await manager.setAStore(redditNickname, redditStore.address)
+    assert.isTrue(await manager.isStoreSet(redditNickname))
+    assert.equal(await redditStore.manager(), manager.address)
+    assert.equal(await manager.getStoreAddress(redditNickname), redditStore.address)
+  })
 
-    await wait(2)
 
-    await newManager.setIdentity(githubId, bob, id1, {
+  it('should allow bob to be associated to reddit/rid1 using manager', async () => {
+
+    await manager.setIdentity(redditId, bob, rid1, {
       from: claimer
     })
 
-    assert.equal(await githubStore.getUid(bob), id1)
-    assert.equal(await githubStore.getAddress(id1), bob)
-
-  })
-
-  it('should allow bob to be associated to github/id5 after 2 seconds using previous manager', async () => {
-
-    await wait(2)
-
-    await manager.setIdentity(githubId, bob, id5, {
-      from: claimer
-    })
-
-    assert.equal(await githubStore.getUid(bob), id5)
-    assert.equal(await githubStore.getAddress(id5), bob)
-
-  })
-
-  it('should switch between old and new manager', async () => {
-
-    await githubStore.switchManagerAndRemoveOldOne()
-    assert.equal(await githubStore.manager(), newManager.address)
-    assert.equal(await githubStore.newManager(), 0)
+    assert.equal(await redditStore.getUid(bob), rid1)
+    assert.equal(await redditStore.getAddress(rid1), bob)
 
   })
 

@@ -1,3 +1,5 @@
+const TwitterUidChecker = artifacts.require('./TwitterUidChecker.sol')
+const RedditUidChecker = artifacts.require('./RedditUidChecker.sol')
 const TweedentityStore = artifacts.require('./TweedentityStore.sol')
 const TweedentityManager = artifacts.require('./TweedentityManager.sol')
 const TweedentityClaimer = artifacts.require('./TweedentityClaimer.sol')
@@ -7,24 +9,29 @@ const TweedentityRegistry = artifacts.require('./TweedentityRegistry.sol')
 contract('TweedentityRegistry', accounts => {
 
   let manager
+  let twitterChecker
+  let redditChecker
   let twitterStore
-  let githubStore
+  let redditStore
   let claimer
   let registry
 
   before(async () => {
+    twitterChecker = await TwitterUidChecker.new()
+    redditChecker = await RedditUidChecker.new()
+
     twitterStore = await TweedentityStore.new()
-    githubStore = await TweedentityStore.new()
+    redditStore = await TweedentityStore.new()
     manager = await TweedentityManager.new()
     claimer = await TweedentityClaimer.new()
 
     await twitterStore.setManager(manager.address)
-    await twitterStore.setApp('twitter', 1)
+    await twitterStore.setApp('twitter', 1, twitterChecker.address)
     await manager.setAStore('twitter', twitterStore.address)
 
-    await githubStore.setManager(manager.address)
-    await githubStore.setApp('github', 2)
-    await manager.setAStore('github', githubStore.address)
+    await redditStore.setManager(manager.address)
+    await redditStore.setApp('reddit', 2, redditChecker.address)
+    await manager.setAStore('reddit', redditStore.address)
 
     await manager.setClaimer(claimer.address)
   })
@@ -40,8 +47,8 @@ contract('TweedentityRegistry', accounts => {
   })
 
   it('should set the store for Github', async () => {
-    await registry.setAStore('github', githubStore.address)
-    assert.equal(await registry.getStore('github'), githubStore.address)
+    await registry.setAStore('reddit', redditStore.address)
+    assert.equal(await registry.getStore('reddit'), redditStore.address)
   })
 
   it('should set the manager', async () => {
@@ -62,21 +69,21 @@ contract('TweedentityRegistry', accounts => {
 
   it('should set all and be ready', async() => {
     await registry.setAStore('twitter', twitterStore.address)
-    await registry.setAStore('github', githubStore.address)
+    await registry.setAStore('reddit', redditStore.address)
     await registry.setManagerAndClaimer(manager.address, claimer.address)
     assert.isTrue(await registry.isReady())
   })
 
   it('should set all and be ready', async() => {
     await registry.setAStore('twitter', twitterStore.address)
-    await registry.setAStore('github', githubStore.address)
+    await registry.setAStore('reddit', redditStore.address)
     await registry.setManagerAndClaimer(manager.address, claimer.address)
     assert.isTrue(await registry.isReady())
   })
 
   it('should set all but be not ready because manager is paused', async() => {
     await registry.setAStore('twitter', twitterStore.address)
-    await registry.setAStore('github', githubStore.address)
+    await registry.setAStore('reddit', redditStore.address)
     await registry.setManagerAndClaimer(manager.address, claimer.address)
     await manager.pause()
     assert.isFalse(await registry.isReady())
