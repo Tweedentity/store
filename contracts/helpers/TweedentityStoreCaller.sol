@@ -20,10 +20,6 @@ contract TweedentityStoreCaller {
   // compiler with produce an error when calling any getter that
   // returns not-allowed dynamic data
 
-  function getUidAsInteger(address _address) public constant returns (uint){
-    return store.getUidAsInteger(_address);
-  }
-
   function getAddress(string _uid) public constant returns (address){
     return store.getAddress(_uid);
   }

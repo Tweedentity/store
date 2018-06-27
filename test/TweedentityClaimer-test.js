@@ -1,6 +1,7 @@
 const assertRevert = require('./helpers/assertRevert')
 const eventWatcher = require('./helpers/EventWatcher')
 
+const TwitterUidChecker = artifacts.require('./TwitterUidChecker.sol')
 const TweedentityStore = artifacts.require('./TweedentityStore.sol')
 const TweedentityManager = artifacts.require('./TweedentityManager.sol')
 const TweedentityClaimer = artifacts.require('./TweedentityClaimer.sol')
@@ -22,6 +23,7 @@ function logValue(...x) {
 
 contract('TweedentityClaimer', accounts => {
 
+  let twitterChecker
   let manager
   let store
   let claimer
@@ -32,12 +34,13 @@ contract('TweedentityClaimer', accounts => {
   let appId = 1
 
   before(async () => {
+    twitterChecker = await TwitterUidChecker.new()
     store = await TweedentityStore.new()
     manager = await TweedentityManager.new()
     claimer = await TweedentityClaimer.new()
 
     await store.setManager(manager.address)
-    await store.setApp(appNickname, appId)
+    await store.setApp(appNickname, appId, twitterChecker.address)
     await manager.setAStore(appNickname, store.address)
 
     wait = (new Wait(await Counter.new())).wait
@@ -94,7 +97,7 @@ contract('TweedentityClaimer', accounts => {
 
 
     const gasPrice = 4e9
-    const gasLimit = 17e4
+    const gasLimit = 18e4
 
     await claimer.claimOwnership(
       appNickname,

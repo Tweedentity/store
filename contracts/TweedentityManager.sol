@@ -19,7 +19,7 @@ contract TweedentityManager
 is Pausable, HasNoEther
 {
 
-  string public version = "1.3.0";
+  string public version = "1.5.0";
 
   struct Store {
     TweedentityStore store;
@@ -329,6 +329,7 @@ is Pausable, HasNoEther
 
     TweedentityStore _store = __getStore(_appId);
     require(_store.isUid(_uid));
+
     if (isUpgradable(_store, _address, _uid)) {
       _store.setIdentity(_address, _uid);
     } else {
@@ -383,41 +384,6 @@ is Pausable, HasNoEther
   onlyOwner
   {
     minimumTimeBeforeUpdate = _newMinimumTime;
-  }
-
-
-
-  // private methods
-
-
-  function __stringToUint(
-    string s
-  )
-  internal
-  pure
-  returns (uint result)
-  {
-    bytes memory b = bytes(s);
-    uint i;
-    result = 0;
-    for (i = 0; i < b.length; i++) {
-      uint c = uint(b[i]);
-      if (c >= 48 && c <= 57) {
-        result = result * 10 + (c - 48);
-      }
-    }
-  }
-
-
-  function __uintToBytes(uint x)
-  internal
-  pure
-  returns (bytes b)
-  {
-    b = new bytes(32);
-    for (uint i = 0; i < 32; i++) {
-      b[i] = byte(uint8(x / (2 ** (8 * (31 - i)))));
-    }
   }
 
 }
