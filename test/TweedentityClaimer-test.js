@@ -58,7 +58,7 @@ contract('TweedentityClaimer', accounts => {
     const gasLimit = 30e4
 
     await assertRevert(
-      claimer.claimOwnership(
+      claimer.claimAccountOwnership(
         appNickname,
         tweet.id,
         gasPrice,
@@ -81,7 +81,7 @@ contract('TweedentityClaimer', accounts => {
     const gasPrice = 4e9
     const gasLimit = 20e4
 
-    await assertRevert(claimer.claimOwnership(
+    await assertRevert(claimer.claimAccountOwnership(
       appNickname,
       '',
       21e9,
@@ -99,7 +99,7 @@ contract('TweedentityClaimer', accounts => {
     const gasPrice = 4e9
     const gasLimit = 18e4
 
-    await claimer.claimOwnership(
+    await claimer.claimAccountOwnership(
       appNickname,
       tweet.id,
       gasPrice,
@@ -138,7 +138,7 @@ contract('TweedentityClaimer', accounts => {
     const gasPrice = 4e9
     const gasLimit = 17e4
 
-    await claimer.claimOwnership(
+    await claimer.claimAccountOwnership(
       appNickname,
       tweet.id,
       gasPrice,

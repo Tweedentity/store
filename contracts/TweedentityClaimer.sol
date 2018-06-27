@@ -90,7 +90,7 @@ is usingOraclize, HasNoEther
    * @param _gasPrice The gas price for Oraclize
    * @param _gasLimit The gas limit for Oraclize
    */
-  function claimOwnership(
+  function claimAccountOwnership(
     string _appNickname,
     string _postId,
     uint _gasPrice,
