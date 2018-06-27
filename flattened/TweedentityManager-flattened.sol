@@ -155,7 +155,7 @@ is HasNoEther
 
 
   modifier whenAppSet() {
-    require(appSet && checker != address(0));
+    require(appSet);
     _;
   }
 
@@ -236,6 +236,7 @@ is HasNoEther
   {
     require(!appSet);
     require(_appId > 0);
+    require(_checker != address(0));
     require(bytes(_appNickname).length > 0);
     appId = _appId;
     appNickname = _appNickname;
